@@ -36,12 +36,11 @@ static int ring_get(ring_t *r, uint32_t *v)
     return 1;
 }
 
+/* Called with all firmware threads gone while glo_render keeps running: only touch the firmware-owned ends.
+ * The out ring drains by itself; stale mic input is dropped. */
 void glo_i2s_reset(void)
 {
-    atomic_store(&out_ring.head, 0);
-    atomic_store(&out_ring.tail, 0);
-    atomic_store(&in_ring.head, 0);
-    atomic_store(&in_ring.tail, 0);
+    atomic_store_explicit(&in_ring.tail, atomic_load_explicit(&in_ring.head, memory_order_acquire), memory_order_release);
 }
 
 void glo_i2s_set_ring_frames(int frames)

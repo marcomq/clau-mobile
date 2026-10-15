@@ -10,7 +10,8 @@ port/            fake ESP-IDF/FreeRTOS: headers + shim (I2S rings, GPIO, NVS-in-
 rust/glo-core    builds firmware + shim (cc), safe API, cpal duplex audio (AAudio / CoreAudio)
 rust/glo-desktop test harness: offline WAV render or realtime with stdin control
 rust/glo-godot   GDExtension: GloNode
-godot/           app: 3 full-height touch zones = buttons, shader visuals from LED + spectrum
+godot/           app: 3 on-screen buttons, shader visuals from LED + spectrum, ⓘ = license notices
+tools/           make_samples.py: synthesizes a free sample image
 ```
 
 ## How it works
@@ -21,7 +22,7 @@ godot/           app: 3 full-height touch zones = buttons, shader visuals from L
   flows the other way into `i2s_pop_sample`.
 - The codec registers are not emulated; `glo_render` applies the firmware's `codec_digital_volume`/`codec_analog_volume`
   (0.5 dB steps, mute values honoured) times a master gain.
-- Buttons: left / middle / right touch zone = U2 / U1 (PWR) / U3. Accelerometer = `Input.get_accelerometer()` in g.
+- Buttons: left / middle / right on-screen button = U2 / U1 (PWR) / U3 (keys 1 / 2 / 3 on desktop). Accelerometer = `Input.get_accelerometer()` in g.
   RGB LED pins are read back for the visuals.
 - Flash: `config_glo.txt` at 0x90000 (embedded; override with `<user data>/config_glo.txt`), the sample image at 0xa0000.
 - NVS (settings, channel order) is stored as files under `<user data>/nvs/`.
@@ -31,16 +32,23 @@ godot/           app: 3 full-height touch zones = buttons, shader visuals from L
 - The published v1.0 source never sets `glo_run = 1` (later releases do), which would leave only the fallback
   loop; the supervisor sets it before boot. No firmware file is modified.
 
-## Sample image (not included)
+## Sample image
 
-Most Whale channels mix filtered background samples from flash (`_all_samples.bin`, ~7.3 MB, version 09 per
-`config_glo.txt`). It is not part of the Glo_v1 repository. Without it those channels are near-silent. Provide it as either:
+Most Whale channels run their filters on background samples from flash (sea, forest, creek; the drum kit and
+voice menu also live there). The layout is the `[samples_map]` in `config_glo.txt` (`_all_samples.bin` version 09, 7264532 bytes).
+Without an image those channels are near-silent.
 
-- `godot/data/samples.bin` (packed into the APK), or
-- `samples.bin` in the app's user data dir, or
-- `--samples FILE` for glo-desktop.
+Generate a free replacement (synthesized, same layout; voice menu spoken if `espeak-ng` is installed, chimes otherwise):
 
-It can be read from a real Glo with `esptool.py read_flash 0xa0000 0x6f0000 samples.bin`.
+```sh
+uv run tools/make_samples.py            # writes godot/data/samples.bin
+```
+
+Use it as `godot/data/samples.bin` (packed into the APK), `samples.bin` in the app's user data dir, or `--samples FILE` for glo-desktop.
+
+The official image (gechologic.com `v2/download/samples.bin.3c5017e…`, or read from a device with
+`esptool.py read_flash 0xa0000 0x6f0000 samples.bin`) has no published license: fine for personal testing,
+but do not put it in an APK you distribute. `godot/data/` packs whatever file is there.
 
 ## Build
 
@@ -67,3 +75,10 @@ adb install -r ../build/glo-mobile.apk
 
 The first build of `godot-core` (generated Godot bindings) takes several minutes per target; later builds are incremental.
 Firmware log output goes to logcat with the tag `glo`.
+
+## License
+
+GPL-3.0 (`LICENSE`), as is the upstream firmware. Third-party components and their licenses are listed in
+`NOTICE.md`; the app shows the required notices behind the ⓘ button. When you distribute an APK, publish the exact
+source revision it was built from (including the `firmware` submodule commit). Because of GPL-3.0, the Apple App
+Store is not an option without permission from all copyright holders.

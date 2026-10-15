@@ -1,4 +1,3 @@
 [submodule "firmware"]
 	path = firmware
-	url = /Users/marcomengelkoch/bin/Glo_v1
-	branch = glo-port
+	url = https://github.com/h3o/Glo_v1.git

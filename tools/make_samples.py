@@ -169,7 +169,7 @@ def main() -> None:
         3: (sea, 4400),
         4: (forest, 4200),
         5: (lambda n: voice_track(menu, menu_total, n, VOICE_RATE), 4000),
-        6: (water, 6000),
+        6: (water, 5000),
         9: (lambda n: drums(drum_lengths), None),
         10: (lambda n: voice_track(menu_v1, menu_v1_total, n, VOICE_V1_RATE), 3000),
     }

@@ -6,11 +6,24 @@ const RECORD_AUDIO := "android.permission.RECORD_AUDIO"
 const ZONE_BUTTONS := [2, 1, 3]
 const ZONE_LABELS := ["U2", "U1  ⏻", "U3"]
 const SAMPLES_PATHS := ["res://data/samples.bin", "user://samples.bin"]
+## GPL-3.0 section 5(d): interactive programs show the Appropriate Legal Notices.
+const ABOUT_TEXT := """glo-mobile — the Glo "Polyphonic Whale" firmware v1.0 (gechologic / phonicbloom) on a phone.
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3. It comes with ABSOLUTELY NO WARRANTY. License: https://www.gnu.org/licenses/gpl-3.0.html
+Source code: https://github.com/marcomq/glo-mobile
+
+Includes: Glo firmware (GPL-3.0), Mutable Instruments Clouds and stmlib by Olivier Gillet (MIT), Dekrispator by Xavier Halgand with code by Sean Bolton and Julian Schmidt (GPL), godot-rust (MPL-2.0), cpal (Apache-2.0) and other Rust crates (MIT / Apache-2.0). Full list: NOTICE.md in the source.
+
+This app uses Godot Engine, available under the following license:
+
+"""
 
 @onready var glo: GloNode = $Glo
 @onready var visual: ColorRect = $Visual
 @onready var buttons: Control = $Buttons
 @onready var status: Label = $Status
+@onready var info: Label = $Info
+@onready var about: ColorRect = $About
 
 var _touch_zone := {}  # touch index -> button
 var _zone_down := [0, 0, 0]
@@ -23,6 +36,7 @@ var _key_tilt := Vector3(0, 0, -1)
 func _ready() -> void:
 	_bands.resize(8)
 	buttons.draw.connect(_draw_buttons)
+	$About/Text.text = ABOUT_TEXT + Engine.get_license_text()
 	if not glo.boot(ProjectSettings.globalize_path("user://"), _load_samples()):
 		status.text = "firmware failed to start"
 		return
@@ -65,12 +79,9 @@ func _button_center(i: int) -> Vector2:
 	return Vector2(size.x * (0.2 + 0.3 * i), size.y - 96.0 - _button_radius())
 
 
-## Generous hit area so the buttons are easy to find by feel; -1 outside all of them.
+## Each full-height third of the screen is a touch field; the circles show which one is held.
 func _button_at(pos: Vector2) -> int:
-	for i in 3:
-		if pos.distance_to(_button_center(i)) < _button_radius() * 1.35:
-			return i
-	return -1
+	return clampi(int(pos.x / size.x * 3.0), 0, 2)
 
 
 func _draw_buttons() -> void:
@@ -98,19 +109,33 @@ func _set_zone(zone: int, delta: int) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			var zone := _button_at(event.position)
-			if zone < 0:
+			if info.get_global_rect().grow(16.0).has_point(event.position):
+				about.visible = not about.visible
 				return
+			if about.visible:
+				return
+			var zone := _button_at(event.position)
 			_touch_zone[event.index] = zone
 			_set_zone(zone, 1)
 		elif _touch_zone.has(event.index):
 			_set_zone(_touch_zone[event.index], -1)
 			_touch_zone.erase(event.index)
+	elif event is InputEventScreenDrag and about.visible:
+		_scroll_about(-event.relative.y)
+	elif event is InputEventMouseButton and about.visible and event.pressed:
+		match event.button_index:
+			MOUSE_BUTTON_WHEEL_UP: _scroll_about(-60.0)
+			MOUSE_BUTTON_WHEEL_DOWN: _scroll_about(60.0)
 	elif event is InputEventKey and not event.echo:
 		var keys := {KEY_1: 1, KEY_2: 2, KEY_3: 3}
 		if keys.has(event.keycode):
 			glo.set_button(keys[event.keycode], event.pressed)
 		_key_tilt_input(event)
+
+
+func _scroll_about(dy: float) -> void:
+	var bar: VScrollBar = $About/Text.get_v_scroll_bar()
+	bar.value = clampf(bar.value + dy, 0.0, bar.max_value)
 
 
 ## Desktop: arrow keys tilt the virtual device.
