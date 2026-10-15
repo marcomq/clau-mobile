@@ -1,0 +1,16 @@
+[package]
+name = "glo-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+links = "glo_firmware"
+
+[dependencies]
+cpal = "0.18.2"
+rtrb = "0.4.0"
+
+[build-dependencies]
+cc = "1.8.0"
+
+[target.'cfg(target_os = "android")'.dependencies]
+libc = "0.2"

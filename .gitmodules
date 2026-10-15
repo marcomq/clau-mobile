@@ -1,0 +1,4 @@
+[submodule "firmware"]
+	path = firmware
+	url = /Users/marcomengelkoch/bin/Glo_v1
+	branch = glo-port
