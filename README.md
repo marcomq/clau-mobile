@@ -1,6 +1,6 @@
 # Clau
 
-Clau runs the [Glo "Polyphonic Whale"](https://github.com/shroomist/Glo_v1) ESP32 firmware (v1.0, Whale board)
+Clau runs the [Glo "Polyphonic Whale"](https://github.com/h3o/Glo_v1) ESP32 firmware (v1.0, Whale board)
 unmodified on Android (and macOS) inside a Godot app. The repository is clau-mobile, the internal names (`glo-core`,
 `GloNode`, `glo_*`) keep the glo prefix, and the Android package id is `io.github.marcomq.clau`.
 
