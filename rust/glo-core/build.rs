@@ -40,6 +40,13 @@ const FW_PATCHES: &[(&str, &str, &str)] = &[
     ("dsp/FilterFlanger.cpp", "sample_i16 = sample_lpf[1] * (1 + (1-ADC_LPF_ALPHA) * 1);", "sample_i16 = glo_sat16(sample_lpf[1] * (1 + (1-ADC_LPF_ALPHA) * 1));"),
     ("dsp/FilterFlanger.cpp", "\t\t\tsample_i16 -= sample_hpf[1];", "\t\t\tsample_i16 = glo_sat16(sample_i16 - sample_hpf[1]);"),
     ("dsp/FilterFlanger.cpp", "\t\t\tsample_i16 -= sample_hpf[3];", "\t\t\tsample_i16 = glo_sat16(sample_i16 - sample_hpf[3]);"),
+    // The filter channels' echo clipped hard at +-32000: crackles on loud, low wind.
+    ("FilteredChannels.cpp",
+     "\tif(echo_mix_f > COMPUTED_SAMPLE_MIXING_LIMIT_UPPER)\n\t{\n\t\techo_mix_f = COMPUTED_SAMPLE_MIXING_LIMIT_UPPER;\n\t}\n\n\tif(echo_mix_f < COMPUTED_SAMPLE_MIXING_LIMIT_LOWER)\n\t{\n\t\techo_mix_f = COMPUTED_SAMPLE_MIXING_LIMIT_LOWER;\n\t}\n\n\tsample_i16 = (int16_t)echo_mix_f;",
+     "\tsample_i16 = glo_sat16(echo_mix_f);"),
+    ("hw/signals.c",
+     "\tif (reverb_mix_f > COMPUTED_SAMPLE_MIXING_LIMIT_UPPER) { reverb_mix_f = COMPUTED_SAMPLE_MIXING_LIMIT_UPPER; }\n\tif (reverb_mix_f < COMPUTED_SAMPLE_MIXING_LIMIT_LOWER) { reverb_mix_f = COMPUTED_SAMPLE_MIXING_LIMIT_LOWER; }\n\n\tsample = (int16_t)reverb_mix_f;",
+     "\tsample = glo_sat16(reverb_mix_f);"),
 ];
 /// Like FW_PATCHES, but every occurrence. Loud mic input wrapped around in these float-to-int16 casts: a crack.
 const FW_PATCHES_ALL: &[(&str, &str, &str)] = &[
@@ -51,6 +58,13 @@ const FW_PATCHES_ALL: &[(&str, &str, &str)] = &[
     ("filtered_channel_loop.inc", "(int16_t)(sample_mix * SAMPLE_VOLUME)", "glo_sat16(sample_mix * SAMPLE_VOLUME)"),
     ("filtered_channel_loop.inc", "sample_i16 += (int16_t)(sample_f[0]*MAIN_VOLUME*SAMPLE_VOLUME);", "sample_i16 = glo_sat16(sample_i16 + sample_f[0]*MAIN_VOLUME*SAMPLE_VOLUME);"),
     ("filtered_channel_loop.inc", "sample_i16 += (int16_t)(sample_f[1]*MAIN_VOLUME*SAMPLE_VOLUME);", "sample_i16 = glo_sat16(sample_i16 + sample_f[1]*MAIN_VOLUME*SAMPLE_VOLUME);"),
+    // The limiter cut the volume by several dB within a millisecond: a dull thump. Ten times slower, glo_sat16 bridges it.
+    ("filtered_channel_loop.inc", "SAMPLE_VOLUME -= DYNAMIC_LIMITER_STEPDOWN;", "SAMPLE_VOLUME -= DYNAMIC_LIMITER_STEPDOWN / 10;"),
+    // Synth or loop plus echo summed in int16 (the DCO source notes "at 24000.0f it is glitching").
+    ("dsp/DCO_Synth.cpp", "sample_i16 += echo_buffer[echo_buffer_ptr];", "sample_i16 = glo_sat16((float)sample_i16 + echo_buffer[echo_buffer_ptr]);"),
+    ("dsp/SamplerLooper.cpp", "sample_i16 += (int)((float)echo_buffer[echo_buffer_ptr_U] * mixing_coeff_octave_U);", "sample_i16 = glo_sat16(sample_i16 + (float)echo_buffer[echo_buffer_ptr_U] * mixing_coeff_octave_U);"),
+    ("dsp/SamplerLooper.cpp", "sample_i16 += (int)((float)echo_buffer[echo_buffer_ptr_D] * mixing_coeff_octave_D);", "sample_i16 = glo_sat16(sample_i16 + (float)echo_buffer[echo_buffer_ptr_D] * mixing_coeff_octave_D);"),
+    ("dsp/FilterFlanger.cpp", "sample_i16 += ((float)sample_i16) * ADC_HPF_ALPHA * 3;", "sample_i16 = glo_sat16(sample_i16 + ((float)sample_i16) * ADC_HPF_ALPHA * 3);"),
 ];
 /// Included by FilteredChannels.cpp, whose patched copy finds them next to it before the original.
 const FW_PATCHED_INCLUDES: &[&str] = &["filtered_channel_loop.inc"];
