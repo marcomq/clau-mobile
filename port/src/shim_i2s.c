@@ -1,4 +1,4 @@
-/* I2S: per-sample push/pop backed by SPSC rings drained/filled by glo_render(). Part of glo-mobile, GPL-3.0. */
+/* I2S: per-sample push/pop backed by SPSC rings drained/filled by glo_render(). Part of glo-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include <time.h>
 #include "shim_internal.h"
 
