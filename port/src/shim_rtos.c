@@ -1,4 +1,5 @@
 /* FreeRTOS tasks on pthreads, cooperative exit for esp_restart()/power-off. Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+#include <errno.h>
 #include <pthread.h>
 #include <sched.h>
 #ifdef __ANDROID__
@@ -73,6 +74,8 @@ static void *task_trampoline(void *arg)
 static int spawn(TaskFunction_t fn, void *param, size_t stack, pthread_t *out)
 {
     task_start_t *start = malloc(sizeof *start);
+    if (!start)
+        return ENOMEM;
     start->fn = fn;
     start->param = param;
 

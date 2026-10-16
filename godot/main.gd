@@ -48,6 +48,7 @@ This app uses Godot Engine, available under the following license:
 @onready var help_button: Label = $HelpButton
 @onready var help: ColorRect = $Help
 @onready var level: Label = $Level
+@onready var flip: Label = $Flip
 @onready var lock: Control = $Lock
 @onready var mic_source: Label = $MicSource
 @onready var mic_down: Label = $MicDown
@@ -81,6 +82,8 @@ var _sequence_check := 0.0
 var _volume_db := NAN
 var _lock_touch := -1
 var _lock_hold := 0.0
+## Upside-down UI, for holding the phone with its mic (bottom edge) pointing away into the room.
+var _flipped := false
 
 
 func _ready() -> void:
@@ -100,6 +103,8 @@ func _ready() -> void:
 		mic_source.visible = true
 		mic_down.visible = true
 		mic_up.visible = true
+		flip.visible = true
+		_set_flipped(cfg.get_value("display", "flipped", false))
 		_usb_mic_connected = glo.has_usb_mic()
 		get_tree().on_request_permissions_result.connect(_on_permission_result)
 		if OS.request_permission(RECORD_AUDIO):
@@ -142,6 +147,20 @@ func _toggle_usb_mic() -> void:
 	cfg.save(SETTINGS_PATH)
 	_restart_audio()
 	_show_mic()
+
+
+func _set_flipped(on: bool) -> void:
+	_flipped = on
+	DisplayServer.screen_set_orientation(DisplayServer.SCREEN_REVERSE_PORTRAIT if on else DisplayServer.SCREEN_PORTRAIT)
+	_calibrate = true
+
+
+func _toggle_flip() -> void:
+	_set_flipped(not _flipped)
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)
+	cfg.set_value("display", "flipped", _flipped)
+	cfg.save(SETTINGS_PATH)
 
 
 func _mic_key() -> String:
@@ -357,6 +376,9 @@ func _input(event: InputEvent) -> void:
 				return
 			if level.get_global_rect().grow(16.0).has_point(event.position):
 				_calibrate = true
+				return
+			if flip.visible and flip.get_global_rect().grow(8.0).has_point(event.position):
+				_toggle_flip()
 				return
 			if lock.get_global_rect().grow(8.0).has_point(event.position):
 				_lock_touch = event.index

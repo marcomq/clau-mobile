@@ -95,6 +95,20 @@ text = "◎"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Flip" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 0
+offset_left = 16.0
+offset_top = 96.0
+offset_right = 80.0
+offset_bottom = 160.0
+modulate = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 36
+text = "⇅"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="Lock" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 0

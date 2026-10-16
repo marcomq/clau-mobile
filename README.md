@@ -68,7 +68,7 @@ Android versions there is no warning and the mic follows the system routing.
   (0.5 dB steps, mute values honoured) times a master gain.
 - Buttons and tilt: see [Controls](#controls). Accelerometer = `Input.get_accelerometer()` in g.
   RGB LED pins are read back for the visuals.
-- Flash: `config_glo.txt` at 0x90000 (embedded; override with `<user data>/config_glo.txt`), the sample image at 0xa0000.
+- Flash: `config_glo.txt` at 0x90000 (embedded; override with `<user data>/config_glo.txt`), the sample image at 0x330000.
 - NVS (settings, channel order) is stored as files under `<user data>/nvs/`.
 - `esp_restart()` and power-off end all firmware threads at their next shim call. After that the
   supervisor boots `app_main` again (after power-off: when U1 is held). Firmware globals are not re-initialised on
