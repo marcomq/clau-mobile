@@ -35,7 +35,25 @@ const FW_PATCHES: &[(&str, &str, &str)] = &[
     ("mi/clouds/resources.cc", "   1.000000000e+00,\n};\nconst float lut_xfade_in[] = {", "   1.000000000e+00,  1.000000000e+00,\n};\nconst float lut_xfade_in[] = {"),
     ("mi/clouds/resources.cc", "   7.071067812e-01,\n};\nconst float lut_xfade_out[] = {", "   7.071067812e-01,  7.071067812e-01,\n};\nconst float lut_xfade_out[] = {"),
     ("mi/clouds/resources.cc", "   4.329780281e-17,\n};\n", "   4.329780281e-17,  4.329780281e-17,\n};\n"),
+    // The flanger's filter gain (x1.94) and high-pass leave int16 range on loud mic input.
+    ("dsp/FilterFlanger.cpp", "sample_i16 = sample_lpf[0] * (1 + (1-ADC_LPF_ALPHA) * 1);", "sample_i16 = glo_sat16(sample_lpf[0] * (1 + (1-ADC_LPF_ALPHA) * 1));"),
+    ("dsp/FilterFlanger.cpp", "sample_i16 = sample_lpf[1] * (1 + (1-ADC_LPF_ALPHA) * 1);", "sample_i16 = glo_sat16(sample_lpf[1] * (1 + (1-ADC_LPF_ALPHA) * 1));"),
+    ("dsp/FilterFlanger.cpp", "\t\t\tsample_i16 -= sample_hpf[1];", "\t\t\tsample_i16 = glo_sat16(sample_i16 - sample_hpf[1]);"),
+    ("dsp/FilterFlanger.cpp", "\t\t\tsample_i16 -= sample_hpf[3];", "\t\t\tsample_i16 = glo_sat16(sample_i16 - sample_hpf[3]);"),
 ];
+/// Like FW_PATCHES, but every occurrence. Loud mic input wrapped around in these float-to-int16 casts: a crack.
+const FW_PATCHES_ALL: &[(&str, &str, &str)] = &[
+    ("ChannelsDef.cpp", "(int16_t)(sample_mix * SAMPLE_VOLUME)", "glo_sat16(sample_mix * SAMPLE_VOLUME)"),
+    ("dsp/FilterFlanger.cpp", "(int16_t)(sample_mix * SAMPLE_VOLUME)", "glo_sat16(sample_mix * SAMPLE_VOLUME)"),
+    ("dsp/SamplerLooper.cpp", "(int16_t)(sample_mix * SAMPLE_VOLUME)", "glo_sat16(sample_mix * SAMPLE_VOLUME)"),
+    ("hw/signals.c", "sample = (int16_t)echo_mix_f;", "sample = glo_sat16(echo_mix_f);"),
+    // The resonant filters ring far beyond int16 on loud input.
+    ("filtered_channel_loop.inc", "(int16_t)(sample_mix * SAMPLE_VOLUME)", "glo_sat16(sample_mix * SAMPLE_VOLUME)"),
+    ("filtered_channel_loop.inc", "sample_i16 += (int16_t)(sample_f[0]*MAIN_VOLUME*SAMPLE_VOLUME);", "sample_i16 = glo_sat16(sample_i16 + sample_f[0]*MAIN_VOLUME*SAMPLE_VOLUME);"),
+    ("filtered_channel_loop.inc", "sample_i16 += (int16_t)(sample_f[1]*MAIN_VOLUME*SAMPLE_VOLUME);", "sample_i16 = glo_sat16(sample_i16 + sample_f[1]*MAIN_VOLUME*SAMPLE_VOLUME);"),
+];
+/// Included by FilteredChannels.cpp, whose patched copy finds them next to it before the original.
+const FW_PATCHED_INCLUDES: &[&str] = &["filtered_channel_loop.inc"];
 const SHIM_C: &[&str] = &["shim_rtos.c", "shim_gpio.c", "shim_i2s.c", "shim_sys.c", "shim_storage.c", "glo_core_api.c"];
 
 fn sources(fw: &Path, exts: &[&str]) -> Vec<PathBuf> {
@@ -57,13 +75,18 @@ fn sources(fw: &Path, exts: &[&str]) -> Vec<PathBuf> {
 
 fn patched(src: &Path, rel: &str) -> PathBuf {
     let patches: Vec<_> = FW_PATCHES.iter().filter(|p| p.0 == rel).collect();
-    if patches.is_empty() {
+    let patches_all: Vec<_> = FW_PATCHES_ALL.iter().filter(|p| p.0 == rel).collect();
+    if patches.is_empty() && patches_all.is_empty() {
         return src.to_path_buf();
     }
     let mut text = std::fs::read_to_string(src).unwrap();
     for (_, from, to) in patches {
         assert_eq!(text.matches(from).count(), 1, "patch for {rel} does not apply: {from:?}");
         text = text.replacen(from, to, 1);
+    }
+    for (_, from, to) in patches_all {
+        assert!(text.contains(from), "patch for {rel} does not apply: {from:?}");
+        text = text.replace(from, to);
     }
     let out = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("patched").join(rel);
     std::fs::create_dir_all(out.parent().unwrap()).unwrap();
@@ -135,6 +158,10 @@ fn main() {
         .opt_level(2)
         .files(SHIM_C.iter().map(|f| root.join("port/src").join(f)))
         .compile_intermediates();
+
+    for inc in FW_PATCHED_INCLUDES {
+        patched(&fw.join(inc), inc);
+    }
 
     // One archive: firmware and shim reference each other in both directions.
     let mut cpp = firmware_build(&root, &fw);

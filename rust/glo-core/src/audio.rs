@@ -173,6 +173,7 @@ impl AudioEngine {
         let out_ch = 2u16;
         let mut scratch = vec![0.0f32; MAX_FRAMES * 2];
         let mut mic = vec![0.0f32; MAX_FRAMES * 2];
+        let mut mic_last = [0.0f32; 2];
         let output = out_dev
             .build_output_stream(
                 config(&opts, out_ch),
@@ -188,8 +189,10 @@ impl AudioEngine {
                         let out = &mut scratch[..frames * 2];
                         let input = if mic_active {
                             let m = &mut mic[..frames * 2];
-                            for s in m.iter_mut() {
-                                *s = mic_rx.pop().unwrap_or(0.0);
+                            // A gap fades out instead of dropping to zero, which would click.
+                            for (i, s) in m.iter_mut().enumerate() {
+                                *s = mic_rx.pop().unwrap_or(mic_last[i & 1] * 0.995);
+                                mic_last[i & 1] = *s;
                             }
                             Some(&m[..])
                         } else {

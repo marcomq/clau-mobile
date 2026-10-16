@@ -18,7 +18,7 @@ extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
 #define CODEC_DIGITAL_MUTE 0x80
 #define CODEC_ANALOG_MUTE 0x76
 #define N_BANDS 8
-/* The codec's mic AGC (attack 8 ms, decay 500 ms) with config_glo.txt's max gain and target (6x U2 / 6x U3 change
+/* The codec's mic AGC (attack 2 ms, decay 500 ms) with config_glo.txt's max gain and target (6x U2 / 6x U3 change
  * the max gain by 6 dB). Phone mics are hotter and noisier than the Glo's, and the master gain the mic passes through
  * is doubled, so both are lowered: the default 32 dB / -5 dB become x9 / 0.28. */
 #define AGC_GAIN_OFFSET_DB 13
@@ -28,6 +28,10 @@ extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
 #define AGC_STEP_SCALE 2
 /* Below ~-40 dBFS input is phone-mic self-noise: expand it down instead of amplifying it to the target. */
 #define AGC_NOISE_GATE 0.01f
+/* The firmware scales the mic by 0.0025 x 64 x 9 and casts to int16 unclamped: above ~0.69 it wraps (a loud crack),
+ * and echo feedback adds on top. Peaks the AGC attack lets through are bent softly under this ceiling. */
+#define MIC_KNEE 0.3f
+#define MIC_CEILING 0.45f
 
 char glo_data_dir[1024];
 _Atomic float glo_accel[3] = { 0.0f, 0.0f, -1.0f };
@@ -48,7 +52,8 @@ static atomic_int mic_trim_db;
 
 /* render-thread-only state */
 static struct {
-    float prev[2], cur[2];
+    float out_hist[4][2]; /* last four engine frames, oldest first */
+    float mic_hist[4][2]; /* last four device mic frames, oldest first */
     double pos;
     float band_z[N_BANDS][2];
     float band_env[N_BANDS];
@@ -56,6 +61,7 @@ static struct {
     int band_rate;
     float rms_env[2];
     float agc_env, agc_gain, agc_release, agc_attack, agc_decay, agc_max, agc_target;
+    float gate, gate_open, gate_close;
     int agc_on;
 } rs;
 
@@ -229,8 +235,10 @@ static void setup_agc(int engine_rate)
 {
     float r = (float)engine_rate;
     rs.agc_release = expf(-1.0f / (0.1f * r));
-    rs.agc_attack = 1.0f - expf(-1.0f / (0.008f * r));
+    rs.agc_attack = 1.0f - expf(-1.0f / (0.002f * r));
     rs.agc_decay = 1.0f - expf(-1.0f / (0.5f * r));
+    rs.gate_open = 1.0f - expf(-1.0f / (0.005f * r));
+    rs.gate_close = 1.0f - expf(-1.0f / (0.2f * r));
     int max_db, target_db;
     glo_port_get_agc(&rs.agc_on, &max_db, &target_db);
     max_db = AGC_REF_DB + (max_db - AGC_REF_DB) * AGC_STEP_SCALE;
@@ -247,23 +255,45 @@ static void mic_agc(float lr[2])
         return;
     float peak = fmaxf(fabsf(lr[0]), fabsf(lr[1]));
     rs.agc_env = peak > rs.agc_env ? peak : rs.agc_env * rs.agc_release;
+    /* The gate fades its own way (5 ms open, 200 ms close), so word tails fade out and the gain is ready at the next onset. */
     float gate = fminf(1.0f, rs.agc_env / AGC_NOISE_GATE);
-    float want = fminf(rs.agc_max, rs.agc_target / fmaxf(rs.agc_env, 1e-6f)) * gate * gate;
+    gate *= gate;
+    rs.gate += (gate < rs.gate ? rs.gate_close : rs.gate_open) * (gate - rs.gate);
+    float want = fminf(rs.agc_max, rs.agc_target / fmaxf(rs.agc_env, 1e-6f));
     rs.agc_gain += (want < rs.agc_gain ? rs.agc_attack : rs.agc_decay) * (want - rs.agc_gain);
-    lr[0] *= rs.agc_gain;
-    lr[1] *= rs.agc_gain;
+    lr[0] *= rs.agc_gain * rs.gate;
+    lr[1] *= rs.agc_gain * rs.gate;
+}
+
+static float mic_limit(float v)
+{
+    float a = fabsf(v);
+    if (a <= MIC_KNEE)
+        return v;
+    return copysignf(MIC_KNEE + (MIC_CEILING - MIC_KNEE) * tanhf((a - MIC_KNEE) / (MIC_CEILING - MIC_KNEE)), v);
+}
+
+/* Catmull-Rom between x0 and x1 at t: far fewer resampling artifacts than linear, at one frame of delay. */
+static float cubic(const float h[4][2], int c, float t)
+{
+    float xm = h[0][c], x0 = h[1][c], x1 = h[2][c], x2 = h[3][c];
+    return x0 + 0.5f * t * (x1 - xm + t * (2.0f * xm - 5.0f * x0 + 4.0f * x1 - x2 + t * (3.0f * (x0 - x1) + x2 - xm)));
+}
+
+static void push_hist(float h[4][2], float l, float r)
+{
+    memmove(h[0], h[1], 3 * sizeof h[0]);
+    h[3][0] = l;
+    h[3][1] = r;
 }
 
 static void next_engine_frame(const float *in_lr)
 {
-    rs.prev[0] = rs.cur[0];
-    rs.prev[1] = rs.cur[1];
     uint32_t f;
     if (glo_i2s_out_pop(&f)) {
-        rs.cur[0] = (float)(int16_t)(f >> 16) / 32768.0f;
-        rs.cur[1] = (float)(int16_t)(f & 0xffff) / 32768.0f;
+        push_hist(rs.out_hist, (float)(int16_t)(f >> 16) / 32768.0f, (float)(int16_t)(f & 0xffff) / 32768.0f);
     } else {
-        rs.cur[0] = rs.cur[1] = 0.0f;
+        push_hist(rs.out_hist, 0.0f, 0.0f);
         if (!atomic_load_explicit(&glo_powered_off, memory_order_relaxed))
             atomic_fetch_add_explicit(&underruns, 1, memory_order_relaxed);
     }
@@ -271,8 +301,8 @@ static void next_engine_frame(const float *in_lr)
     if (in_lr) {
         float mic[2] = { in_lr[0], in_lr[1] };
         mic_agc(mic);
-        l = (int16_t)lrintf(fmaxf(-1.0f, fminf(1.0f, mic[0])) * 32767.0f);
-        r = (int16_t)lrintf(fmaxf(-1.0f, fminf(1.0f, mic[1])) * 32767.0f);
+        l = (int16_t)lrintf(mic_limit(mic[0]) * 32767.0f);
+        r = (int16_t)lrintf(mic_limit(mic[1]) * 32767.0f);
     }
     glo_i2s_in_push(((uint32_t)(uint16_t)l << 16) | (uint16_t)r);
 }
@@ -294,13 +324,22 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
 
     for (int i = 0; i < frames; i++) {
         rs.pos += step;
+        if (in_lr)
+            push_hist(rs.mic_hist, in_lr[2 * i], in_lr[2 * i + 1]);
         while (rs.pos >= 1.0) {
-            next_engine_frame(in_lr ? in_lr + 2 * i : NULL);
+            /* The engine frame lies t device frames before frame i (here i-1, for the cubic's lookahead). */
+            float mic[2];
+            if (in_lr) {
+                float t = (float)((rs.pos - 1.0) / step);
+                for (int c = 0; c < 2; c++)
+                    mic[c] = cubic(rs.mic_hist, c, 1.0f - t);
+            }
+            next_engine_frame(in_lr ? mic : NULL);
             rs.pos -= 1.0;
         }
         float t = (float)rs.pos;
         for (int c = 0; c < 2; c++) {
-            float v = (rs.prev[c] + (rs.cur[c] - rs.prev[c]) * t) * gain;
+            float v = cubic(rs.out_hist, c, t) * gain;
             if (fabsf(v) > 0.8f)
                 v = copysignf(0.8f + 0.2f * tanhf((fabsf(v) - 0.8f) / 0.2f), v);
             out_lr[2 * i + c] = v;
