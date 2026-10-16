@@ -23,16 +23,34 @@ pub struct GloNode {
     /// Multiplies the accelerometer (per axis) before it reaches the firmware, to fix orientation.
     #[export]
     accel_sign: Vector3,
+    underruns: u32,
+    underrun_timer: f64,
     base: Base<Node>,
 }
 
 #[godot_api]
 impl INode for GloNode {
     fn init(base: Base<Node>) -> Self {
-        Self { engine: None, use_accelerometer: true, accel_sign: Vector3::ONE, base }
+        Self {
+            engine: None,
+            use_accelerometer: true,
+            accel_sign: Vector3::ONE,
+            underruns: 0,
+            underrun_timer: 0.0,
+            base,
+        }
     }
 
-    fn process(&mut self, _delta: f64) {
+    fn process(&mut self, delta: f64) {
+        self.underrun_timer -= delta;
+        if self.underrun_timer <= 0.0 {
+            self.underrun_timer = 2.0;
+            let n = glo_core::underruns();
+            if n != self.underruns {
+                eprintln!("glo: {} underrun frames in the last 2 s", n.wrapping_sub(self.underruns));
+                self.underruns = n;
+            }
+        }
         if self.use_accelerometer && self.engine.is_some() {
             let a = Input::singleton().get_accelerometer();
             if a != Vector3::ZERO {
@@ -91,6 +109,12 @@ impl GloNode {
     #[func]
     fn is_mic_active(&self) -> bool {
         self.engine.as_ref().is_some_and(|e| e.mic_active)
+    }
+
+    /// False only when headphones are known to be missing (Android); true when connected or unknown.
+    #[func]
+    fn has_headphones(&self) -> bool {
+        glo_core::audio::headphones_connected().unwrap_or(true)
     }
 
     /// idx 1 = U1 (power / next channel), 2 = U2, 3 = U3.

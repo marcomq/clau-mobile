@@ -7,6 +7,7 @@ config/name="Glo"
 config/description="Glo Whale firmware on Android"
 run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icons/icon.png"
 boot_splash/show_image=false
 boot_splash/bg_color=Color(0, 0, 0, 1)
 

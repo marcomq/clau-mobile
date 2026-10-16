@@ -31,6 +31,8 @@ var _led := Color.BLACK
 var _rms := 0.0
 var _bands := PackedFloat32Array()
 var _key_tilt := Vector3(0, 0, -1)
+var _headphones := true
+var _headphone_check := 0.0
 
 
 func _ready() -> void:
@@ -164,4 +166,11 @@ func _process(delta: float) -> void:
 	mat.set_shader_parameter("rms", _rms)
 	mat.set_shader_parameter("bands", _bands)
 	buttons.queue_redraw()
+	_headphone_check -= delta
+	if _headphone_check <= 0.0:
+		_headphone_check = 2.0
+		_headphones = glo.has_headphones()
 	status.text = "channel %d  ·  %d Hz%s" % [glo.get_channel() + 1, glo.get_engine_rate(), "" if glo.is_powered() else "  ·  off (hold middle)"]
+	if not _headphones:
+		status.text = "no headphones connected: the Glo is meant to be played with headphones\n" + status.text
+	status.modulate.a = 0.45 if _headphones else 0.9

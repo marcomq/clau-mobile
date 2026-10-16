@@ -14,6 +14,12 @@ extern int glo_run;
 #define CODEC_DIGITAL_MUTE 0x80
 #define CODEC_ANALOG_MUTE 0x76
 #define N_BANDS 8
+/* The codec's mic AGC (target -5.5 dBFS, attack 8 ms, decay 500 ms). config_glo.txt allows +32 dB, but phone mics
+ * are hotter and noisier than the Glo's, so the gain is capped at +20 dB. */
+#define AGC_TARGET 0.53f
+#define AGC_MAX_GAIN 10.0f
+/* Below ~-40 dBFS input is phone-mic self-noise: expand it down instead of amplifying it to the target. */
+#define AGC_NOISE_GATE 0.01f
 
 char glo_data_dir[1024];
 _Atomic float glo_accel[3] = { 0.0f, 0.0f, -1.0f };
@@ -27,6 +33,7 @@ static _Atomic float master_gain = 4.0f;
 
 static _Atomic float level_rms[2];
 static _Atomic float level_bands[N_BANDS];
+static atomic_uint underruns;
 
 /* render-thread-only state */
 static struct {
@@ -37,6 +44,7 @@ static struct {
     float band_coef[N_BANDS][3];
     int band_rate;
     float rms_env[2];
+    float agc_env, agc_gain, agc_release, agc_attack, agc_decay;
 } rs;
 
 void glo_port_get_accel(float out[3])
@@ -157,6 +165,25 @@ static void setup_bands(int rate)
     rs.band_rate = rate;
 }
 
+static void setup_agc(int engine_rate)
+{
+    float r = (float)engine_rate;
+    rs.agc_release = expf(-1.0f / (0.1f * r));
+    rs.agc_attack = 1.0f - expf(-1.0f / (0.008f * r));
+    rs.agc_decay = 1.0f - expf(-1.0f / (0.5f * r));
+}
+
+static void mic_agc(float lr[2])
+{
+    float peak = fmaxf(fabsf(lr[0]), fabsf(lr[1]));
+    rs.agc_env = peak > rs.agc_env ? peak : rs.agc_env * rs.agc_release;
+    float gate = fminf(1.0f, rs.agc_env / AGC_NOISE_GATE);
+    float want = fminf(AGC_MAX_GAIN, AGC_TARGET / fmaxf(rs.agc_env, 1e-6f)) * gate * gate;
+    rs.agc_gain += (want < rs.agc_gain ? rs.agc_attack : rs.agc_decay) * (want - rs.agc_gain);
+    lr[0] *= rs.agc_gain;
+    lr[1] *= rs.agc_gain;
+}
+
 static void next_engine_frame(const float *in_lr)
 {
     rs.prev[0] = rs.cur[0];
@@ -167,11 +194,15 @@ static void next_engine_frame(const float *in_lr)
         rs.cur[1] = (float)(int16_t)(f & 0xffff) / 32768.0f;
     } else {
         rs.cur[0] = rs.cur[1] = 0.0f;
+        if (!atomic_load_explicit(&glo_powered_off, memory_order_relaxed))
+            atomic_fetch_add_explicit(&underruns, 1, memory_order_relaxed);
     }
     int16_t l = 0, r = 0;
     if (in_lr) {
-        l = (int16_t)lrintf(fmaxf(-1.0f, fminf(1.0f, in_lr[0])) * 32767.0f);
-        r = (int16_t)lrintf(fmaxf(-1.0f, fminf(1.0f, in_lr[1])) * 32767.0f);
+        float mic[2] = { in_lr[0], in_lr[1] };
+        mic_agc(mic);
+        l = (int16_t)lrintf(fmaxf(-1.0f, fminf(1.0f, mic[0])) * 32767.0f);
+        r = (int16_t)lrintf(fmaxf(-1.0f, fminf(1.0f, mic[1])) * 32767.0f);
     }
     glo_i2s_in_push(((uint32_t)(uint16_t)l << 16) | (uint16_t)r);
 }
@@ -183,7 +214,10 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
     if (rs.band_rate != device_rate)
         setup_bands(device_rate);
 
-    const double step = (double)atomic_load(&glo_engine_rate) / (double)device_rate;
+    const int engine_rate = atomic_load(&glo_engine_rate);
+    const double step = (double)engine_rate / (double)device_rate;
+    setup_agc(engine_rate);
+    glo_i2s_ensure_ring_frames(2 * ((int)(frames * step) + 2));
     const float gain = codec_gain();
     double sum[2] = { 0, 0 };
     double band_sum[N_BANDS] = { 0 };
@@ -250,6 +284,7 @@ void glo_get_led(int *r, int *g, int *b)
 int glo_get_channel(void) { return channel_loop; }
 int glo_get_engine_rate(void) { return atomic_load(&glo_engine_rate); }
 int glo_is_powered(void) { return !atomic_load(&glo_powered_off); }
+unsigned glo_get_underruns(void) { return atomic_load_explicit(&underruns, memory_order_relaxed); }
 
 void glo_get_levels(float *rms_l, float *rms_r, float bands[8])
 {

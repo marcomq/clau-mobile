@@ -5,6 +5,11 @@
 #include <sys/stat.h>
 #include "shim_internal.h"
 
+#ifdef _WIN32
+#include <io.h>
+#define mkdir(path, mode) mkdir(path)
+#endif
+
 #define MAX_HANDLES 16
 
 static char nvs_root[1024];

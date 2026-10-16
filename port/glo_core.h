@@ -28,6 +28,7 @@ void glo_get_led(int *r, int *g, int *b);
 int glo_get_channel(void);
 int glo_get_engine_rate(void);
 int glo_is_powered(void);
+unsigned glo_get_underruns(void); /* engine frames glo_render had to fill with silence while powered */
 void glo_get_levels(float *rms_l, float *rms_r, float bands[8]);
 
 #ifdef __cplusplus

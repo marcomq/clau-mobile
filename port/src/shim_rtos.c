@@ -1,7 +1,9 @@
 /* FreeRTOS tasks on pthreads, cooperative exit for esp_restart()/power-off. Part of glo-mobile, GPL-3.0. */
 #include <pthread.h>
 #include <sched.h>
+#ifdef __ANDROID__
 #include <sys/resource.h>
+#endif
 #include <sys/time.h>
 #include <time.h>
 #include "shim_internal.h"

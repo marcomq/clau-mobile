@@ -4,7 +4,8 @@ compatibility_minimum = 4.7
 reloadable = false
 
 [libraries]
-macos.debug = "res://bin/libglo_godot.dylib"
-macos.release = "res://bin/libglo_godot.dylib"
-android.debug.arm64 = "res://bin/libglo_godot.so"
-android.release.arm64 = "res://bin/libglo_godot.so"
+macos = "res://bin/macos/libglo_godot.dylib"
+linux.x86_64 = "res://bin/linux/libglo_godot.so"
+linux.arm64 = "res://bin/linux/libglo_godot.so"
+windows.x86_64 = "res://bin/windows/glo_godot.dll"
+android.arm64 = "res://bin/android/libglo_godot.so"

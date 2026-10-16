@@ -1,6 +1,6 @@
 //! Raw bindings to `port/glo_core.h`.
 
-use std::os::raw::{c_char, c_float, c_int};
+use std::os::raw::{c_char, c_float, c_int, c_uint};
 
 extern "C" {
     pub fn glo_set_config(text: *const c_char, len: usize);
@@ -15,5 +15,6 @@ extern "C" {
     pub fn glo_get_channel() -> c_int;
     pub fn glo_get_engine_rate() -> c_int;
     pub fn glo_is_powered() -> c_int;
+    pub fn glo_get_underruns() -> c_uint;
     pub fn glo_get_levels(rms_l: *mut c_float, rms_r: *mut c_float, bands: *mut c_float);
 }

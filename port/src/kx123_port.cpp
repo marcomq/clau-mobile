@@ -18,5 +18,5 @@ bool KX123::getresults_g(float *buf)
 {
     glo_port_check_exit();
     glo_port_get_accel(buf);
-    return true;
+    return false;
 }

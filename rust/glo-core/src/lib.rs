@@ -1,6 +1,8 @@
 //! Host core for glo-mobile: the unmodified Glo Whale firmware running on a fake ESP32,
 //! plus a low-latency cpal audio engine that drives it.
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod audio;
 pub mod ffi;
 #[cfg(target_os = "android")]
@@ -84,6 +86,11 @@ pub fn engine_rate() -> u32 {
 
 pub fn is_powered() -> bool {
     unsafe { ffi::glo_is_powered() != 0 }
+}
+
+/// Engine frames the output had to fill with silence because the firmware fell behind.
+pub fn underruns() -> u32 {
+    unsafe { ffi::glo_get_underruns() }
 }
 
 pub fn levels() -> Levels {

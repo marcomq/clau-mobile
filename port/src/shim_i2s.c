@@ -52,6 +52,15 @@ void glo_i2s_set_ring_frames(int frames)
     atomic_store(&ring_limit, frames);
 }
 
+/* Called from glo_render: the ring must hold more than one device callback, or every callback underruns. */
+void glo_i2s_ensure_ring_frames(int frames)
+{
+    if (frames > RING_CAP - 1)
+        frames = RING_CAP - 1;
+    if (atomic_load_explicit(&ring_limit, memory_order_relaxed) < frames)
+        atomic_store_explicit(&ring_limit, frames, memory_order_relaxed);
+}
+
 int glo_i2s_out_pop(uint32_t *frame) { return ring_get(&out_ring, frame); }
 
 void glo_i2s_in_push(uint32_t frame)

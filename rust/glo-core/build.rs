@@ -58,6 +58,8 @@ fn main() {
     let fw = root.join("firmware/main");
     assert!(fw.join("main.cpp").exists(), "firmware submodule missing: run `git submodule update --init`");
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+    assert!(target_env != "msvc", "the firmware shim needs pthreads and C11 atomics: build with x86_64-pc-windows-gnu (MinGW)");
 
     let c_objs = firmware_build(&root, &fw)
         .std("gnu11")
@@ -83,6 +85,9 @@ fn main() {
     if target_os == "android" {
         cpp.cpp_link_stdlib("c++_static");
         println!("cargo:rustc-link-lib=c++abi");
+    }
+    if target_os == "windows" {
+        println!("cargo:rustc-link-lib=pthread");
     }
     cpp.compile("glo_firmware");
 
