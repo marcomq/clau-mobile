@@ -178,6 +178,12 @@ impl GloNode {
         glo_core::channel()
     }
 
+    /// Index of the running channel in the config's `[channels]` list.
+    #[func]
+    fn get_channel_id(&self) -> i32 {
+        glo_core::channel_id()
+    }
+
     #[func]
     fn get_engine_rate(&self) -> i32 {
         glo_core::engine_rate() as i32
@@ -192,6 +198,35 @@ impl GloNode {
     #[func]
     fn get_mic_agc_db(&self) -> i32 {
         glo_core::mic_agc_db().unwrap_or(-1)
+    }
+
+    /// Short presses typed so far and not yet decoded: `a` = U1, `b` = U2, `c` = U3.
+    #[func]
+    fn get_button_sequence(&self) -> GString {
+        GString::from(glo_core::button_sequence().as_str())
+    }
+
+    /// Decoded commands the running channel has not picked up yet: bit 0 = sequence, 1 = U2 tap, 2 = U3 tap.
+    #[func]
+    fn get_pending_commands(&self) -> i32 {
+        glo_core::pending_commands() as i32
+    }
+
+    /// Output volume in dB, -1000 when muted.
+    #[func]
+    fn get_volume_db(&self) -> f32 {
+        glo_core::volume_db().unwrap_or(-1000.0)
+    }
+
+    /// Stores the extra-channel unlock and restarts the firmware.
+    #[func]
+    fn set_all_channels_unlocked(&self, on: bool) {
+        glo_core::set_all_channels_unlocked(on);
+    }
+
+    #[func]
+    fn are_all_channels_unlocked(&self) -> bool {
+        glo_core::all_channels_unlocked()
     }
 
     /// [rms_l, rms_r, band0 .. band7], bands from 60 Hz to 12 kHz.

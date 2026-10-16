@@ -9,6 +9,7 @@ pub mod ffi;
 pub mod logcat;
 
 use std::ffi::CString;
+use std::os::raw::{c_char, c_int};
 use std::path::Path;
 
 /// Default flash config, overridable by `<data_dir>/config_glo.txt`.
@@ -80,6 +81,11 @@ pub fn channel() -> i32 {
     unsafe { ffi::glo_get_channel() }
 }
 
+/// Index of the running channel in the config's `[channels]` list (differs from `channel()` after reordering).
+pub fn channel_id() -> i32 {
+    unsafe { ffi::glo_get_channel_id() }
+}
+
 pub fn engine_rate() -> u32 {
     unsafe { ffi::glo_get_engine_rate() as u32 }
 }
@@ -107,6 +113,33 @@ pub fn set_mic_trim_db(db: i32) {
 pub fn mic_agc_db() -> Option<i32> {
     let db = unsafe { ffi::glo_get_mic_agc_db() };
     (db >= 0).then_some(db)
+}
+
+/// Short presses typed so far and not yet decoded: `a` = U1, `b` = U2, `c` = U3.
+pub fn button_sequence() -> String {
+    let mut buf = [0 as c_char; 16];
+    let n = unsafe { ffi::glo_get_button_sequence(buf.as_mut_ptr(), buf.len() as c_int) };
+    buf[..n.max(0) as usize].iter().map(|&c| c as u8 as char).collect()
+}
+
+/// Decoded commands the running channel has not picked up yet: bit 0 = sequence, 1 = U2 tap, 2 = U3 tap.
+pub fn pending_commands() -> u32 {
+    unsafe { ffi::glo_get_pending_command() as u32 }
+}
+
+/// Output volume in dB, `None` when muted.
+pub fn volume_db() -> Option<f32> {
+    let db = unsafe { ffi::glo_get_volume_db() };
+    (db > -1000.0).then_some(db)
+}
+
+/// Stores the extra-channel unlock (as the firmware's − + − + − + − + ▷ does) and restarts the firmware.
+pub fn set_all_channels_unlocked(on: bool) {
+    unsafe { ffi::glo_set_all_channels_unlocked(on as c_int) }
+}
+
+pub fn all_channels_unlocked() -> bool {
+    unsafe { ffi::glo_get_all_channels_unlocked() != 0 }
 }
 
 pub fn levels() -> Levels {

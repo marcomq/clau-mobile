@@ -8,7 +8,9 @@
 
 extern void app_main(void);
 extern int codec_digital_volume, codec_analog_volume;
-extern int channel_loop;
+extern int channel_loop, channel_loop_remapped;
+extern int short_press_seq_ptr, short_press_sequence, short_press_volume_plus, short_press_volume_minus;
+extern char short_press_seq[];
 extern int glo_run;
 extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
 
@@ -105,6 +107,25 @@ static void load_flash(void)
     printf("glo: flash loaded, samples %zu bytes%s\n", n, n ? "" : " (none: background samples are silent)");
 }
 
+static atomic_int pending_unlock = -1;
+static atomic_int all_unlocked;
+
+/* Runs while no firmware thread is alive, so nothing else touches NVS. */
+static void apply_pending_unlock(void)
+{
+    nvs_handle_t h;
+    if (nvs_open("glo_settings", NVS_READWRITE, &h) != ESP_OK)
+        return;
+    int on = atomic_exchange(&pending_unlock, -1);
+    if (on >= 0) {
+        nvs_set_i8(h, "XTRA_CHNL", (int8_t)on);
+        printf("glo: extra channels %s\n", on ? "unlocked" : "locked");
+    }
+    int8_t v = 0;
+    atomic_store(&all_unlocked, nvs_get_i8(h, "XTRA_CHNL", &v) == ESP_OK && v);
+    nvs_close(h);
+}
+
 static void *supervisor(void *arg)
 {
     (void)arg;
@@ -113,6 +134,7 @@ static void *supervisor(void *arg)
         glo_gpio_reset();
         glo_i2s_reset();
         glo_nvs_set_root(glo_data_dir);
+        apply_pending_unlock();
         glo_rtos_reset_clock();
         /* The published v1.0 source never sets this (later releases do in app_main), leaving only the fallback loop. */
         glo_run = 1;
@@ -304,10 +326,44 @@ void glo_get_led(int *r, int *g, int *b)
 }
 
 int glo_get_channel(void) { return channel_loop; }
+int glo_get_channel_id(void) { return channel_loop_remapped; }
 int glo_get_engine_rate(void) { return atomic_load(&glo_engine_rate); }
 int glo_is_powered(void) { return !atomic_load(&glo_powered_off); }
 unsigned glo_get_underruns(void) { return atomic_load_explicit(&underruns, memory_order_relaxed); }
 int glo_get_mic_agc_db(void) { return atomic_load_explicit(&mic_agc_db, memory_order_relaxed); }
+
+/* Read without locking while the firmware's button thread writes: only for display. */
+int glo_get_button_sequence(char *out, int max)
+{
+    int n = *(volatile int *)&short_press_seq_ptr;
+    if (n > max)
+        n = max;
+    for (int i = 0; i < n; i++)
+        out[i] = ((volatile char *)short_press_seq)[i];
+    return n < 0 ? 0 : n;
+}
+
+int glo_get_pending_command(void)
+{
+    return (*(volatile int *)&short_press_sequence ? 1 : 0) | (*(volatile int *)&short_press_volume_plus ? 2 : 0)
+        | (*(volatile int *)&short_press_volume_minus ? 4 : 0);
+}
+
+void glo_set_all_channels_unlocked(int on)
+{
+    atomic_store(&pending_unlock, on ? 1 : 0);
+    glo_request_kill(0);
+}
+
+int glo_get_all_channels_unlocked(void) { return atomic_load(&all_unlocked); }
+
+float glo_get_volume_db(void)
+{
+    int dv = codec_digital_volume, av = codec_analog_volume;
+    if (dv >= CODEC_DIGITAL_MUTE || av >= CODEC_ANALOG_MUTE)
+        return -1000.0f;
+    return -0.5f * (float)(dv + av);
+}
 
 void glo_get_levels(float *rms_l, float *rms_r, float bands[8])
 {

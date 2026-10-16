@@ -1,6 +1,6 @@
 # Notices
 
-glo-mobile is free software under the GNU General Public License v3.0 (see `LICENSE`). It comes with
+Clau (repository: glo-mobile) is free software under the GNU General Public License v3.0 (see `LICENSE`). It comes with
 ABSOLUTELY NO WARRANTY. Source: https://github.com/marcomq/glo-mobile (firmware submodule:
 https://github.com/h3o/Glo_v1, commit aad6c17).
 
@@ -11,7 +11,7 @@ file with it and point recipients to the exact source revision.
 
 | Component | Where | License |
 |---|---|---|
-| glo-mobile port, bindings, app, sample generator | `port/`, `rust/`, `godot/`, `tools/` | GPL-3.0 |
+| Clau / glo-mobile port, bindings, app, sample generator | `port/`, `rust/`, `godot/`, `tools/` | GPL-3.0 |
 | Glo / Gecho firmware v1.0, gechologic / phonicbloom (h3o) | `firmware/` | GPL-3.0 (upstream since v1.0.118; the v1.0 snapshot carries the ESP-IDF template's Apache-2.0 text) |
 | Mutable Instruments Clouds and stmlib, Copyright Olivier Gillet | `firmware/main/mi/` | MIT |
 | Dekrispator, Xavier Halgand; blepvco and minBLEP tables, Copyright Sean Bolton; resonant filter, Copyright Julian Schmidt | `firmware/main/dkr/` | GPL-2.0-or-later / per file header |
@@ -28,3 +28,9 @@ All of the above are compatible with distribution under GPL-3.0.
 The official Glo sample image (`_all_samples.bin`, gechologic.com) has no published license and must not be
 redistributed. `tools/make_samples.py` synthesizes a replacement with the same layout; its output is
 covered by this project's license.
+
+## Disclaimer
+
+Clau is an independent, unofficial project. It is not affiliated with, endorsed, sponsored or supported by
+Phonicbloom, gechologic or the Glo project, and claims no trademark, brand or other rights to their names,
+products or artwork. "Glo" is used only to identify the original instrument whose firmware Clau runs.

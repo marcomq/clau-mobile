@@ -1,7 +1,15 @@
-# glo-mobile
+# Clau
 
-The [Glo "Polyphonic Whale"](https://github.com/shroomist/Glo_v1) ESP32 firmware (v1.0, Whale board), running
-unmodified on Android (and macOS) inside a Godot app.
+Clau runs the [Glo "Polyphonic Whale"](https://github.com/shroomist/Glo_v1) ESP32 firmware (v1.0, Whale board)
+unmodified on Android (and macOS) inside a Godot app. The repository and its internal names (`glo-core`, `GloNode`,
+`glo_*`, package id `org.glo.mobile`) keep the name glo-mobile.
+
+**How to play it: see the [manual](MANUAL.md)** (controls, tilt, button commands, settings, all channels,
+differences from the Glo).
+
+> **Disclaimer:** Clau is an independent, unofficial project. It is not affiliated with, endorsed or supported by
+> Phonicbloom, gechologic or the Glo project, and claims no trademark, brand or other rights to their names or
+> products. "Glo" only names the original instrument whose open-source firmware Clau runs.
 
 ```
 firmware/        Glo_v1 submodule, branch glo-port (v1.0 Whale source, aad6c17), compiled as-is
@@ -10,22 +18,23 @@ port/            fake ESP-IDF/FreeRTOS: headers + shim (I2S rings, GPIO, NVS-in-
 rust/glo-core    builds firmware + shim (cc), safe API, cpal duplex audio (AAudio / CoreAudio)
 rust/glo-desktop test harness: offline WAV render or realtime with stdin control
 rust/glo-godot   GDExtension: GloNode
-godot/           app: 3 on-screen buttons, shader visuals from LED + spectrum, ⓘ = license notices
+godot/           app: 3 on-screen buttons, shader visuals from LED + spectrum, ? = channel info, ⓘ = license notices
 tools/           make_samples.py: synthesizes a free sample image
 ```
 
 ## Controls
 
-| Glo        | Android / on-screen     | Godot app keys | glo-desktop (stdin)             |
-|------------|-------------------------|----------------|---------------------------------|
-| U1 (power) | middle button           | `1`            | `1` (short), `1L` (long press)  |
-| U2         | left button             | `2`            | `2`, `2L`                       |
-| U3         | right button            | `3`            | `3`, `3L`                       |
+| Glo         | Android / on-screen        | Godot app keys | glo-desktop (stdin)             |
+|-------------|----------------------------|----------------|---------------------------------|
+| U1 (▷ play) | middle button (large, orange) | `1`         | `1` (short), `1L` (long press)  |
+| U2 (+)      | right button               | `2`            | `2`, `2L`                       |
+| U3 (−)      | left button                | `3`            | `3`, `3L`                       |
 | Tilt       | accelerometer           | arrow keys     | `t X Y Z` (in g)                |
 | Tilt       | joystick on the ring (adds to the accelerometer) | drag with the mouse |         |
 | Quit       |                         |                | `q`                             |
 
-Tapping ⓘ opens the license notices. Tapping ◎ takes the current holding pose as the Glo lying flat (also done at start).
+Tapping ? shows what the current channel does and how to control it; tapping ⓘ opens the license notices and the disclaimer. Holding the lock next to ◎ for 10 s unlocks all channels (stored as the firmware's `XTRA_CHNL` NVS key, applied by
+the supervisor between firmware restarts); holding it 3 s locks the extra channels again. Tapping ◎ takes the current holding pose as the Glo lying flat (also done at start).
 
 ## Audio
 
@@ -112,7 +121,7 @@ if `ANDROID_NDK_HOME` is unset, and runs `$GODOT` (default `godot`):
 
 ```sh
 ./build.sh desktop    # Godot extension for the host OS → godot/bin/<macos|linux|windows>/
-./build.sh android    # Android extension + APK → godot/bin/android/, build/glo-mobile.apk
+./build.sh android    # Android extension + APK → godot/bin/android/, build/clau.apk
 ./build.sh install    # android, then adb install
 ./build.sh log        # adb logcat -s glo
 ```
@@ -141,11 +150,11 @@ export ANDROID_NDK_HOME=/opt/homebrew/share/android-commandlinetools/ndk/29.0.14
 cargo ndk -t arm64-v8a --platform 26 build --release -p glo-godot
 cp target/aarch64-linux-android/release/libglo_godot.so ../godot/bin/android/
 cd ../godot && godot --headless --import && godot --headless --export-debug Android
-adb install -r ../build/glo-mobile.apk
+adb install -r ../build/clau.apk
 ```
 
 `adb install` needs USB debugging enabled on the phone (Settings → About phone → tap Build number 7×, then
-Developer options → USB debugging). Alternatively copy `build/glo-mobile.apk` to the phone and open it there
+Developer options → USB debugging). Alternatively copy `build/clau.apk` to the phone and open it there
 (allow installing unknown apps).
 
 The first build of `godot-core` (generated Godot bindings) takes several minutes per target; later builds are incremental.

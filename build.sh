@@ -35,7 +35,7 @@ build_android() {
 case "${1:-}" in
     desktop) build_desktop ;;
     android) build_android ;;
-    install) build_android && adb install -r build/glo-mobile.apk ;;
+    install) build_android && adb install -r build/clau.apk ;;
     log) adb logcat -s glo ;;
     *) echo "usage: $0 desktop | android | install | log" >&2; exit 1 ;;
 esac
