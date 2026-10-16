@@ -1,5 +1,6 @@
 #!/bin/sh
-# Usage: ./build.sh desktop | android | install | log
+# Usage: ./build.sh desktop | android | release | install | log
+# release: signed with GODOT_ANDROID_KEYSTORE_RELEASE_PATH / _USER / _PASSWORD
 set -eu
 cd "$(dirname "$0")"
 
@@ -29,13 +30,14 @@ build_android() {
     mkdir -p godot/bin/android
     cp rust/target/aarch64-linux-android/release/libglo_godot.so godot/bin/android/
     mkdir -p build
-    (cd godot && "$GODOT" --headless --import && "$GODOT" --headless --export-debug Android)
+    (cd godot && "$GODOT" --headless --import && "$GODOT" --headless "--${EXPORT:-export-debug}" Android)
 }
 
 case "${1:-}" in
     desktop) build_desktop ;;
     android) build_android ;;
+    release) EXPORT=export-release build_android ;;
     install) build_android && adb install -r build/clau.apk ;;
     log) adb logcat -s glo ;;
-    *) echo "usage: $0 desktop | android | install | log" >&2; exit 1 ;;
+    *) echo "usage: $0 desktop | android | release | install | log" >&2; exit 1 ;;
 esac

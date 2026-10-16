@@ -2,7 +2,7 @@
 
 Clau runs the [Glo "Polyphonic Whale"](https://github.com/shroomist/Glo_v1) ESP32 firmware (v1.0, Whale board)
 unmodified on Android (and macOS) inside a Godot app. The repository and its internal names (`glo-core`, `GloNode`,
-`glo_*`, package id `org.glo.mobile`) keep the name glo-mobile.
+`glo_*`) keep the name glo-mobile; the Android package id is `io.github.marcomq.clau`.
 
 **How to play it: see the [manual](MANUAL.md)** (controls, tilt, button commands, settings, all channels,
 differences from the Glo).
@@ -125,6 +125,17 @@ if `ANDROID_NDK_HOME` is unset, and runs `$GODOT` (default `godot`):
 ./build.sh install    # android, then adb install
 ./build.sh log        # adb logcat -s glo
 ```
+
+`./build.sh release` exports a release APK signed with the keystore in `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`
+(`_USER` = alias, `_PASSWORD`).
+
+### Release (GitHub Actions)
+
+Pushing a tag `v*` (e.g. `v0.1.0`) runs [`.github/workflows/release.yml`](.github/workflows/release.yml): it
+synthesizes the free sample image, builds the signed APK and attaches `clau-<version>.apk`, `LICENSE` and
+`NOTICE.md` to a GitHub release. The tag sets the version name, the run number the version code. Repository
+secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i release.keystore`), `ANDROID_KEYSTORE_ALIAS`,
+`ANDROID_KEYSTORE_PASSWORD`. Manual runs (workflow_dispatch) only upload the APK as a build artifact.
 
 Tested on macOS (desktop) and Android. Linux and Windows are set up but untested:
 
