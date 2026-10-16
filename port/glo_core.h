@@ -1,4 +1,4 @@
-/* glo_core.h - host API of the Glo firmware running on the fake-ESP32 shim. Part of glo-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* glo_core.h - host API of the Glo firmware running on the fake-ESP32 shim. Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #ifndef GLO_CORE_H
 #define GLO_CORE_H
 

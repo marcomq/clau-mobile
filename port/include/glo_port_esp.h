@@ -1,7 +1,7 @@
 /*
  * glo_port_esp.h - minimal fake ESP-IDF 4.4 / FreeRTOS API surface used by the Glo firmware.
  * Every fake system header under port/include just includes this file.
- * Part of glo-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
+ * Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
  */
 #ifndef GLO_PORT_ESP_H
 #define GLO_PORT_ESP_H
