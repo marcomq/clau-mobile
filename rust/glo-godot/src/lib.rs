@@ -23,6 +23,9 @@ pub struct GloNode {
     /// Multiplies the accelerometer (per axis) before it reaches the firmware, to fix orientation.
     #[export]
     accel_sign: Vector3,
+    /// Android: record from a USB microphone when one is connected (applies at the next `start_audio`).
+    #[export]
+    usb_mic: bool,
     underruns: u32,
     underrun_timer: f64,
     base: Base<Node>,
@@ -35,6 +38,7 @@ impl INode for GloNode {
             engine: None,
             use_accelerometer: true,
             accel_sign: Vector3::ONE,
+            usb_mic: false,
             underruns: 0,
             underrun_timer: 0.0,
             base,
@@ -85,12 +89,13 @@ impl GloNode {
         self.engine = None;
         let opts = AudioOptions {
             use_mic,
+            usb_mic: self.usb_mic,
             buffer_frames: (buffer_frames > 0).then_some(buffer_frames as u32),
             ..Default::default()
         };
         match AudioEngine::start(opts) {
             Ok(engine) => {
-                godot_print!("glo: audio {} Hz, mic {}", engine.sample_rate, engine.mic_active);
+                godot_print!("glo: audio {} Hz, mic {:?}", engine.sample_rate, engine.mic_name);
                 self.engine = Some(engine);
                 true
             }
@@ -109,6 +114,30 @@ impl GloNode {
     #[func]
     fn is_mic_active(&self) -> bool {
         self.engine.as_ref().is_some_and(|e| e.mic_active)
+    }
+
+    /// Whether a USB microphone is connected; false when unknown (desktop).
+    #[func]
+    fn has_usb_mic(&self) -> bool {
+        glo_core::audio::usb_mic_connected().unwrap_or(false)
+    }
+
+    /// Whether the current recording device is a USB microphone.
+    #[func]
+    fn is_mic_usb(&self) -> bool {
+        self.engine.as_ref().is_some_and(|e| e.mic_usb)
+    }
+
+    /// Mic sensitivity trim in dB on top of the firmware's AGC setting.
+    #[func]
+    fn set_mic_trim_db(&self, db: i32) {
+        glo_core::set_mic_trim_db(db);
+    }
+
+    /// Name of the recording device, empty without mic.
+    #[func]
+    fn get_mic_name(&self) -> GString {
+        self.engine.as_ref().and_then(|e| e.mic_name.as_deref()).unwrap_or("").into()
     }
 
     /// False only when headphones are known to be missing (Android); true when connected or unknown.
@@ -157,6 +186,12 @@ impl GloNode {
     #[func]
     fn is_powered(&self) -> bool {
         glo_core::is_powered()
+    }
+
+    /// The firmware's mic AGC max gain in dB (6x U2 / 6x U3), -1 while the AGC is off.
+    #[func]
+    fn get_mic_agc_db(&self) -> i32 {
+        glo_core::mic_agc_db().unwrap_or(-1)
     }
 
     /// [rms_l, rms_r, band0 .. band7], bands from 60 Hz to 12 kHz.

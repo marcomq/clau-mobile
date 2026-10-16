@@ -10,14 +10,19 @@ extern void app_main(void);
 extern int codec_digital_volume, codec_analog_volume;
 extern int channel_loop;
 extern int glo_run;
+extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
 
 #define CODEC_DIGITAL_MUTE 0x80
 #define CODEC_ANALOG_MUTE 0x76
 #define N_BANDS 8
-/* The codec's mic AGC (target -5.5 dBFS, attack 8 ms, decay 500 ms). config_glo.txt allows +32 dB, but phone mics
- * are hotter and noisier than the Glo's, so the gain is capped at +20 dB. */
-#define AGC_TARGET 0.53f
-#define AGC_MAX_GAIN 10.0f
+/* The codec's mic AGC (attack 8 ms, decay 500 ms) with config_glo.txt's max gain and target (6x U2 / 6x U3 change
+ * the max gain by 6 dB). Phone mics are hotter and noisier than the Glo's, and the master gain the mic passes through
+ * is doubled, so both are lowered: the default 32 dB / -5 dB become x9 / 0.28. */
+#define AGC_GAIN_OFFSET_DB 13
+#define AGC_TARGET_OFFSET_DB 6
+/* Each 6x U2 / 6x U3 moves the max gain away from config_glo.txt's default 32 dB twice as far as on the Glo. */
+#define AGC_REF_DB 32
+#define AGC_STEP_SCALE 2
 /* Below ~-40 dBFS input is phone-mic self-noise: expand it down instead of amplifying it to the target. */
 #define AGC_NOISE_GATE 0.01f
 
@@ -29,11 +34,14 @@ static size_t pending_config_len;
 static const uint8_t *pending_samples;
 static size_t pending_samples_len;
 static atomic_int started;
-static _Atomic float master_gain = 4.0f;
+static _Atomic float master_gain = 8.0f;
 
 static _Atomic float level_rms[2];
 static _Atomic float level_bands[N_BANDS];
 static atomic_uint underruns;
+static atomic_int mic_agc_db = -1;
+static atomic_int mic_offset_db;
+static atomic_int mic_trim_db;
 
 /* render-thread-only state */
 static struct {
@@ -44,7 +52,8 @@ static struct {
     float band_coef[N_BANDS][3];
     int band_rate;
     float rms_env[2];
-    float agc_env, agc_gain, agc_release, agc_attack, agc_decay;
+    float agc_env, agc_gain, agc_release, agc_attack, agc_decay, agc_max, agc_target;
+    int agc_on;
 } rs;
 
 void glo_port_get_accel(float out[3])
@@ -171,14 +180,24 @@ static void setup_agc(int engine_rate)
     rs.agc_release = expf(-1.0f / (0.1f * r));
     rs.agc_attack = 1.0f - expf(-1.0f / (0.008f * r));
     rs.agc_decay = 1.0f - expf(-1.0f / (0.5f * r));
+    int max_db, target_db;
+    glo_port_get_agc(&rs.agc_on, &max_db, &target_db);
+    max_db = AGC_REF_DB + (max_db - AGC_REF_DB) * AGC_STEP_SCALE;
+    int offset_db = AGC_GAIN_OFFSET_DB + atomic_load_explicit(&mic_offset_db, memory_order_relaxed)
+        - atomic_load_explicit(&mic_trim_db, memory_order_relaxed);
+    rs.agc_max = powf(10.0f, (float)(max_db - offset_db) / 20.0f);
+    rs.agc_target = powf(10.0f, (float)(target_db - AGC_TARGET_OFFSET_DB) / 20.0f);
+    atomic_store_explicit(&mic_agc_db, rs.agc_on ? max_db : -1, memory_order_relaxed);
 }
 
 static void mic_agc(float lr[2])
 {
+    if (!rs.agc_on)
+        return;
     float peak = fmaxf(fabsf(lr[0]), fabsf(lr[1]));
     rs.agc_env = peak > rs.agc_env ? peak : rs.agc_env * rs.agc_release;
     float gate = fminf(1.0f, rs.agc_env / AGC_NOISE_GATE);
-    float want = fminf(AGC_MAX_GAIN, AGC_TARGET / fmaxf(rs.agc_env, 1e-6f)) * gate * gate;
+    float want = fminf(rs.agc_max, rs.agc_target / fmaxf(rs.agc_env, 1e-6f)) * gate * gate;
     rs.agc_gain += (want < rs.agc_gain ? rs.agc_attack : rs.agc_decay) * (want - rs.agc_gain);
     lr[0] *= rs.agc_gain;
     lr[1] *= rs.agc_gain;
@@ -231,7 +250,8 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
         float t = (float)rs.pos;
         for (int c = 0; c < 2; c++) {
             float v = (rs.prev[c] + (rs.cur[c] - rs.prev[c]) * t) * gain;
-            v = fmaxf(-1.0f, fminf(1.0f, v));
+            if (fabsf(v) > 0.8f)
+                v = copysignf(0.8f + 0.2f * tanhf((fabsf(v) - 0.8f) / 0.2f), v);
             out_lr[2 * i + c] = v;
             sum[c] += (double)v * v;
         }
@@ -272,6 +292,8 @@ void glo_set_button(int idx, int down)
 
 void glo_set_ring_frames(int frames) { glo_i2s_set_ring_frames(frames); }
 void glo_set_master_gain(float gain) { atomic_store(&master_gain, gain); }
+void glo_set_mic_offset_db(int db) { atomic_store(&mic_offset_db, db); }
+void glo_set_mic_trim_db(int db) { atomic_store(&mic_trim_db, db); }
 
 void glo_get_led(int *r, int *g, int *b)
 {
@@ -285,6 +307,7 @@ int glo_get_channel(void) { return channel_loop; }
 int glo_get_engine_rate(void) { return atomic_load(&glo_engine_rate); }
 int glo_is_powered(void) { return !atomic_load(&glo_powered_off); }
 unsigned glo_get_underruns(void) { return atomic_load_explicit(&underruns, memory_order_relaxed); }
+int glo_get_mic_agc_db(void) { return atomic_load_explicit(&mic_agc_db, memory_order_relaxed); }
 
 void glo_get_levels(float *rms_l, float *rms_r, float bands[8])
 {

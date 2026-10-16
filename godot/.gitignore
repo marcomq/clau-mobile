@@ -1,4 +1,5 @@
 .godot/
-bin/*.so
-bin/*.dylib
+bin/**/*.so
+bin/**/*.dylib
+bin/**/*.dll
 data/samples.bin

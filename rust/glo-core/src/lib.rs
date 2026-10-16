@@ -93,6 +93,22 @@ pub fn underruns() -> u32 {
     unsafe { ffi::glo_get_underruns() }
 }
 
+/// Lowers the mic AGC max gain by `db` on top of the phone-mic offset (for hotter mics, e.g. USB).
+pub fn set_mic_offset_db(db: i32) {
+    unsafe { ffi::glo_set_mic_offset_db(db) }
+}
+
+/// The user's mic sensitivity trim in dB (raises or lowers the AGC max gain).
+pub fn set_mic_trim_db(db: i32) {
+    unsafe { ffi::glo_set_mic_trim_db(db) }
+}
+
+/// The firmware's mic AGC max gain in dB (6x U2 raises, 6x U3 lowers it), `None` while the AGC is off.
+pub fn mic_agc_db() -> Option<i32> {
+    let db = unsafe { ffi::glo_get_mic_agc_db() };
+    (db >= 0).then_some(db)
+}
+
 pub fn levels() -> Levels {
     let mut l = Levels::default();
     unsafe { ffi::glo_get_levels(&mut l.rms[0], &mut l.rms[1], l.bands.as_mut_ptr()) };

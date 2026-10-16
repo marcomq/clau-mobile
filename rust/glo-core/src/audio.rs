@@ -7,6 +7,8 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, Stream, StreamConfig};
 
 const MAX_FRAMES: usize = 4096;
+/// USB mics hiss far less than phone mics, so the AGC would lift room noise to full level.
+const USB_MIC_OFFSET_DB: i32 = 15;
 
 #[derive(Clone, Copy, Debug)]
 pub struct AudioOptions {
@@ -14,11 +16,13 @@ pub struct AudioOptions {
     /// Device callback size in frames; `None` lets the platform choose (AAudio: one burst).
     pub buffer_frames: Option<u32>,
     pub use_mic: bool,
+    /// Android: record from a USB microphone when one is connected, instead of the built-in mic.
+    pub usb_mic: bool,
 }
 
 impl Default for AudioOptions {
     fn default() -> Self {
-        Self { sample_rate: 48_000, buffer_frames: None, use_mic: true }
+        Self { sample_rate: 48_000, buffer_frames: None, use_mic: true, usb_mic: false }
     }
 }
 
@@ -27,6 +31,8 @@ pub struct AudioEngine {
     _input: Option<Stream>,
     pub sample_rate: u32,
     pub mic_active: bool,
+    pub mic_name: Option<String>,
+    pub mic_usb: bool,
 }
 
 fn config(opts: &AudioOptions, channels: u16) -> StreamConfig {
@@ -37,41 +43,84 @@ fn config(opts: &AudioOptions, channels: u16) -> StreamConfig {
     }
 }
 
-/// On Android the default input follows routing, so a headset would take over the mic; pin the built-in one.
+/// Android devices with their descriptions; empty when enumeration is unavailable (see `android.rs`).
 #[cfg(target_os = "android")]
-fn input_device(host: &cpal::Host) -> Option<cpal::Device> {
-    let builtin = crate::android::init_context()
-        .then(|| host.input_devices().ok())
-        .flatten()
-        .and_then(|mut devs| {
-            devs.find(|d| d.description().is_ok_and(|desc| desc.device_type() == cpal::DeviceType::Microphone))
-        });
-    builtin.or_else(|| host.default_input_device())
+fn android_devices(host: &cpal::Host, input: bool) -> Vec<(cpal::Device, cpal::DeviceDescription)> {
+    if !crate::android::init_context() {
+        return Vec::new();
+    }
+    let devs = if input {
+        host.input_devices().map(|d| d.collect::<Vec<_>>())
+    } else {
+        host.output_devices().map(|d| d.collect::<Vec<_>>())
+    };
+    devs.unwrap_or_default().into_iter().filter_map(|d| d.description().ok().map(|desc| (d, desc))).collect()
+}
+
+#[cfg(target_os = "android")]
+fn is_headphones(desc: &cpal::DeviceDescription) -> bool {
+    use cpal::{DeviceType, InterfaceType};
+    matches!(desc.device_type(), DeviceType::Headphones | DeviceType::Headset | DeviceType::HearingAid)
+        || desc.device_type() != DeviceType::Speaker
+            && matches!(desc.interface_type(), InterfaceType::Bluetooth | InterfaceType::Usb | InterfaceType::Line)
+}
+
+/// The output side of a USB microphone (e.g. its monitor jack), which is not headphones.
+/// USB headsets and headphone adapters report as headsets and are not affected.
+#[cfg(target_os = "android")]
+fn is_usb_mic_output(out: &cpal::DeviceDescription, inputs: &[(cpal::Device, cpal::DeviceDescription)]) -> bool {
+    use cpal::{DeviceType, InterfaceType};
+    out.interface_type() == InterfaceType::Usb
+        && out.device_type() != DeviceType::Headset
+        && inputs.iter().any(|(_, i)| i.interface_type() == InterfaceType::Usb && i.name() == out.name())
+}
+
+/// On Android the default input follows routing, so a headset would take over the mic; pin the built-in one,
+/// or a USB microphone when `usb_mic` is set and one is connected.
+#[cfg(target_os = "android")]
+fn input_device(host: &cpal::Host, usb_mic: bool) -> Option<cpal::Device> {
+    let mut devs = android_devices(host, true);
+    let usb = usb_mic
+        .then(|| devs.iter().position(|(_, d)| d.interface_type() == cpal::InterfaceType::Usb))
+        .flatten();
+    let builtin = devs.iter().position(|(_, d)| d.device_type() == cpal::DeviceType::Microphone);
+    usb.or(builtin).map(|i| devs.swap_remove(i).0).or_else(|| host.default_input_device())
 }
 
 #[cfg(not(target_os = "android"))]
-fn input_device(host: &cpal::Host) -> Option<cpal::Device> {
+fn input_device(host: &cpal::Host, _usb_mic: bool) -> Option<cpal::Device> {
     host.default_input_device()
 }
 
 /// Whether headphones (wired, USB, Bluetooth, hearing aid, line out) are connected. `None` when unknown:
-/// on desktop, or when Android device enumeration is unavailable.
+/// on desktop, or when Android device enumeration is unavailable. A USB microphone's own output does not count.
 #[cfg(target_os = "android")]
 pub fn headphones_connected() -> Option<bool> {
-    use cpal::{DeviceType, InterfaceType};
     if !crate::android::init_context() {
         return None;
     }
-    let devs = cpal::default_host().output_devices().ok()?;
-    Some(devs.filter_map(|d| d.description().ok()).any(|desc| {
-        matches!(desc.device_type(), DeviceType::Headphones | DeviceType::Headset | DeviceType::HearingAid)
-            || desc.device_type() != DeviceType::Speaker
-                && matches!(desc.interface_type(), InterfaceType::Bluetooth | InterfaceType::Usb | InterfaceType::Line)
-    }))
+    let host = cpal::default_host();
+    let inputs = android_devices(&host, true);
+    Some(android_devices(&host, false).iter().any(|(_, d)| is_headphones(d) && !is_usb_mic_output(d, &inputs)))
 }
 
 #[cfg(not(target_os = "android"))]
 pub fn headphones_connected() -> Option<bool> {
+    None
+}
+
+/// Whether a USB microphone is connected (Android). `None` when unknown.
+#[cfg(target_os = "android")]
+pub fn usb_mic_connected() -> Option<bool> {
+    if !crate::android::init_context() {
+        return None;
+    }
+    let inputs = android_devices(&cpal::default_host(), true);
+    Some(inputs.iter().any(|(_, d)| d.interface_type() == cpal::InterfaceType::Usb))
+}
+
+#[cfg(not(target_os = "android"))]
+pub fn usb_mic_connected() -> Option<bool> {
     None
 }
 
@@ -85,8 +134,10 @@ impl AudioEngine {
         let mic_chunk = Arc::new(AtomicUsize::new(0));
         let mic_chunk_in = mic_chunk.clone();
         let mut input = None;
+        let mut mic_name = None;
+        let mut mic_usb = false;
         if opts.use_mic {
-            if let Some(in_dev) = input_device(&host) {
+            if let Some(in_dev) = input_device(&host, opts.usb_mic) {
                 let in_ch = in_dev.default_input_config().map(|c| c.channels()).unwrap_or(1).clamp(1, 2);
                 let built = in_dev.build_input_stream(
                     config(&opts, in_ch),
@@ -105,7 +156,14 @@ impl AudioEngine {
                     None,
                 );
                 match built.and_then(|s| s.play().map(|_| s)) {
-                    Ok(s) => input = Some(s),
+                    Ok(s) => {
+                        input = Some(s);
+                        let desc = in_dev.description().ok();
+                        let usb = desc.as_ref().is_some_and(|d| d.interface_type() == cpal::InterfaceType::Usb);
+                        crate::set_mic_offset_db(if usb { USB_MIC_OFFSET_DB } else { 0 });
+                        mic_usb = usb;
+                        mic_name = desc.map(|d| d.name().to_string());
+                    }
                     Err(e) => eprintln!("glo: microphone unavailable: {e}"),
                 }
             }
@@ -147,6 +205,6 @@ impl AudioEngine {
             .map_err(|e| format!("output stream: {e}"))?;
         output.play().map_err(|e| format!("output play: {e}"))?;
 
-        Ok(Self { _output: output, _input: input, sample_rate: rate, mic_active })
+        Ok(Self { _output: output, _input: input, sample_rate: rate, mic_active, mic_name, mic_usb })
     }
 }

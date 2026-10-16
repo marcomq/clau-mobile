@@ -22,9 +22,10 @@ tools/           make_samples.py: synthesizes a free sample image
 | U2         | left button             | `2`            | `2`, `2L`                       |
 | U3         | right button            | `3`            | `3`, `3L`                       |
 | Tilt       | accelerometer           | arrow keys     | `t X Y Z` (in g)                |
+| Tilt       | joystick on the ring (adds to the accelerometer) | drag with the mouse |         |
 | Quit       |                         |                | `q`                             |
 
-Tapping ⓘ opens the license notices.
+Tapping ⓘ opens the license notices. Tapping ◎ takes the current holding pose as the Glo lying flat (also done at start).
 
 ## Audio
 
@@ -32,9 +33,16 @@ Like the original Glo, it is meant to be played with headphones. On Android the 
 no headphones are connected (wired, USB, Bluetooth, hearing aid or line out; checked every 2 s). Bluetooth speakers
 cannot be told apart from Bluetooth headphones and count as headphones.
 
-On Android the app always records from the phone's built-in microphone, so a headset with its own mic
-(wired or USB) does not take over; if no built-in mic is listed, it falls back to the system default. A few vendors'
+On Android the app records from the phone's built-in microphone by default, so a headset with its own mic
+(wired or USB) does not take over; if no built-in mic is listed, it falls back to the system default.
+Tapping "mic: built-in" at the top switches to a USB microphone when one is connected (saved in `user://app.cfg`).
+The − / + next to it trim the mic sensitivity in 3 dB steps, saved separately for the built-in and the USB mic.
+Playback follows Android's routing (choose the output in Android's media output switcher); a USB microphone's own
+output does not count as headphones. Audio restarts when a USB mic is plugged in or removed. A few vendors'
 audio drivers may ignore this and still use the headset mic. Without the microphone permission the app runs without input.
+Mic sensitivity works like on the Glo: 6 short presses on U2 raise the AGC max gain by 12 dB (6 dB on the Glo), 6 on U3 lower it
+(default `AGC_MAX_GAIN 32` in `config_glo.txt`, not saved across restarts); the status line shows the new value.
+Phone mics are hotter than the Glo's, so the app applies the firmware's value 13 dB lower (25 dB lower for a USB mic).
 glo-desktop takes `--no-mic`; on macOS the system default input is used.
 
 Both need the Android device list, which cpal reads through JNI. A GDExtension gets no JavaVM handed to it, so

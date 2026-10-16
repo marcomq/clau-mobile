@@ -29,6 +29,9 @@ int glo_get_channel(void);
 int glo_get_engine_rate(void);
 int glo_is_powered(void);
 unsigned glo_get_underruns(void); /* engine frames glo_render had to fill with silence while powered */
+void glo_set_mic_offset_db(int db); /* lowers the mic AGC max gain further, for hotter mics */
+void glo_set_mic_trim_db(int db);   /* user trim of the mic AGC max gain (app setting), added on top */
+int glo_get_mic_agc_db(void);      /* the mic AGC max gain in the firmware's dB scale (6x U2 / 6x U3: +-12 dB), -1 while the AGC is off */
 void glo_get_levels(float *rms_l, float *rms_r, float bands[8]);
 
 #ifdef __cplusplus

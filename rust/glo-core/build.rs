@@ -64,6 +64,7 @@ fn main() {
     let c_objs = firmware_build(&root, &fw)
         .std("gnu11")
         .files(sources(&fw, &["c"]))
+        .file(root.join("port/src/agc_port.c"))
         .compile_intermediates();
     let shim_objs = cc::Build::new()
         .include(root.join("port/include"))

@@ -16,5 +16,8 @@ extern "C" {
     pub fn glo_get_engine_rate() -> c_int;
     pub fn glo_is_powered() -> c_int;
     pub fn glo_get_underruns() -> c_uint;
+    pub fn glo_get_mic_agc_db() -> c_int;
+    pub fn glo_set_mic_offset_db(db: c_int);
+    pub fn glo_set_mic_trim_db(db: c_int);
     pub fn glo_get_levels(rms_l: *mut c_float, rms_r: *mut c_float, bands: *mut c_float);
 }

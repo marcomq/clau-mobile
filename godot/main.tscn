@@ -66,6 +66,70 @@ text = "ⓘ"
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Level" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 80.0
+offset_bottom = 80.0
+modulate = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 36
+text = "◎"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MicSource" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -116.0
+offset_top = 16.0
+offset_right = 116.0
+offset_bottom = 80.0
+grow_horizontal = 2
+modulate = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 24
+text = "mic: built-in"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MicDown" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -180.0
+offset_top = 16.0
+offset_right = -120.0
+offset_bottom = 80.0
+grow_horizontal = 2
+modulate = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 36
+text = "−"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="MicUp" type="Label" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 120.0
+offset_top = 16.0
+offset_right = 180.0
+offset_bottom = 80.0
+grow_horizontal = 2
+modulate = Color(1, 1, 1, 0.45)
+theme_override_font_sizes/font_size = 36
+text = "+"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="About" type="ColorRect" parent="."]
 visible = false
 layout_mode = 1
