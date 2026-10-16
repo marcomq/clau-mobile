@@ -12,7 +12,7 @@ differences from the Glo).
 > products. "Glo" only names the original instrument whose open-source firmware Clau runs.
 
 ```
-firmware/        Glo_v1 submodule, branch glo-port (v1.0 Whale source, aad6c17), compiled as-is
+firmware/        Glo_v1 submodule (h3o/Glo_v1, v1.0 Whale source, commit aad6c17), compiled as-is
 port/            fake ESP-IDF/FreeRTOS: headers + shim (I2S rings, GPIO, NVS-in-files, flash image, tasks)
   glo_core.h     C API: glo_start / glo_render / glo_set_button / glo_set_accel / glo_get_led / ...
 rust/glo-core    builds firmware + shim (cc), safe API, cpal duplex audio (AAudio / CoreAudio)
