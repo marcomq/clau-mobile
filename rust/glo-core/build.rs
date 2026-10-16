@@ -1,4 +1,4 @@
-//! Compiles the unmodified Glo firmware (v1.0 Whale) together with the fake-ESP32 shim in `port/`.
+//! Compiles the Glo firmware (v1.0.118 Whale) together with the fake-ESP32 shim in `port/`.
 
 use std::path::{Path, PathBuf};
 
@@ -13,6 +13,29 @@ const FW_INCLUDE_DIRS: &[&str] = &[
 ];
 /// Replaced by `port/src/kx123_port.cpp`.
 const FW_EXCLUDE: &[&str] = &["hw/kx123.cpp"];
+/// Upstream Whale build bugs, fixed in a copy under OUT_DIR: (file, exact text, replacement).
+const FW_PATCHES: &[(&str, &str, &str)] = &[
+    ("dkr/soundGen.c", "DKR_FX_OPTIONS_CHANGE; event_channel_options = 0;\n", "DKR_FX_OPTIONS_CHANGE; event_channel_options = 0; }\n"),
+    ("FilteredChannels.cpp", "\t#ifdef BOARD_GECHO\n\n\tfloat reverb_volume", "\tfloat reverb_volume"),
+    ("FilteredChannels.cpp", "\n\tif(persistent_settings.SAMPLING_RATE != SAMPLE_RATE_DEFAULT)", "\n\t#ifdef BOARD_GECHO\n\tif(persistent_settings.SAMPLING_RATE != SAMPLE_RATE_DEFAULT)"),
+    // The Whale loads the channel map once at boot, so freeing its strings per channel is a use-after-free.
+    ("main.cpp", "\t\tfree(channels_map[channel_loop_remapped].name);\n", "\t\t#ifndef BOARD_WHALE\n\t\tfree(channels_map[channel_loop_remapped].name);\n"),
+    ("main.cpp", "str_param = NULL;\n\t\t}\n", "str_param = NULL;\n\t\t}\n\t\t#endif\n"),
+    ("glo_config.c", "\tstrcpy(buf,formula);\n", "\tsnprintf(buf, sizeof(buf), \"%s\", formula);\n"),
+    // An empty or comment-only line read line_buffer[-1]: SIGBUS when the buffer starts a page.
+    ("glo_config.c", "while (line_buffer[line_length - 1] == '\\t') {", "while (line_length > 0 && line_buffer[line_length - 1] == '\\t') {"),
+    ("glo_config.c", "while (line_buffer[line_length - 1] == ' ') {", "while (line_length > 0 && line_buffer[line_length - 1] == ' ') {"),
+    // The caller's map has MAIN_CHANNELS+1 entries and the parser never checked; a longer [channels] list overflowed the stack.
+    ("glo_config.c", "\t\t\t\t\tchannels_found++;\n", "\t\t\t\t\tif(++channels_found > MAIN_CHANNELS) done = 1;\n"),
+    // The Whale has no IR sensors; the Gecho default (IRS) would leave the accelerometer off.
+    ("glo_config.c", "    use_acc_or_ir_sensors = persistent_settings.PARAMS_SENSORS;\n", "    #ifdef BOARD_GECHO\n    use_acc_or_ir_sensors = persistent_settings.PARAMS_SENSORS;\n    #endif\n"),
+    // Only the Gecho branch stops the tempo task; on the Whale it would pile up and steal mic samples.
+    ("main.cpp", "#define LISTEN_FOR_TEMPO_AT_IDLE\n", "#ifndef BOARD_WHALE\n#define LISTEN_FOR_TEMPO_AT_IDLE\n#endif\n"),
+    // stmlib's Interpolate() reads table[i + 1], one past the end at index 1.0: repeat each table's last value.
+    ("mi/clouds/resources.cc", "   1.000000000e+00,\n};\nconst float lut_xfade_in[] = {", "   1.000000000e+00,  1.000000000e+00,\n};\nconst float lut_xfade_in[] = {"),
+    ("mi/clouds/resources.cc", "   7.071067812e-01,\n};\nconst float lut_xfade_out[] = {", "   7.071067812e-01,  7.071067812e-01,\n};\nconst float lut_xfade_out[] = {"),
+    ("mi/clouds/resources.cc", "   4.329780281e-17,\n};\n", "   4.329780281e-17,  4.329780281e-17,\n};\n"),
+];
 const SHIM_C: &[&str] = &["shim_rtos.c", "shim_gpio.c", "shim_i2s.c", "shim_sys.c", "shim_storage.c", "glo_core_api.c"];
 
 fn sources(fw: &Path, exts: &[&str]) -> Vec<PathBuf> {
@@ -24,12 +47,45 @@ fn sources(fw: &Path, exts: &[&str]) -> Vec<PathBuf> {
             let rel = p.strip_prefix(fw).unwrap().to_string_lossy().replace('\\', "/");
             let ext_ok = p.extension().and_then(|x| x.to_str()).is_some_and(|x| exts.contains(&x));
             if p.is_file() && ext_ok && !FW_EXCLUDE.contains(&rel.as_str()) {
-                out.push(p);
+                out.push(patched(&p, &rel));
             }
         }
     }
     out.sort();
     out
+}
+
+fn patched(src: &Path, rel: &str) -> PathBuf {
+    let patches: Vec<_> = FW_PATCHES.iter().filter(|p| p.0 == rel).collect();
+    if patches.is_empty() {
+        return src.to_path_buf();
+    }
+    let mut text = std::fs::read_to_string(src).unwrap();
+    for (_, from, to) in patches {
+        assert_eq!(text.matches(from).count(), 1, "patch for {rel} does not apply: {from:?}");
+        text = text.replacen(from, to, 1);
+    }
+    let out = PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("patched").join(rel);
+    std::fs::create_dir_all(out.parent().unwrap()).unwrap();
+    std::fs::write(&out, text).unwrap();
+    out
+}
+
+/// v1.0.118's Clouds halts without its per-mode patch blocks, which only `config_gecho.txt` has.
+/// The Infinite Looper (Gecho channel 24, Whale v2 channel 8) becomes the 25th, unlockable channel.
+fn whale_config(fw_data: &Path, out: &Path) {
+    let mut glo = std::fs::read_to_string(fw_data.join("config_glo.txt")).unwrap();
+    let gecho = std::fs::read_to_string(fw_data.join("config_gecho.txt")).unwrap();
+    let last = "binaural=1\t\t//Notjustmoreidlechatter, voiceover\n";
+    assert_eq!(glo.matches(last).count(), 1, "config_glo.txt: {last:?} must occur exactly once");
+    glo = glo.replace(last, &format!("{last}infinite_looper:settings=1\t\t\t\t//looper with warping and reversible delay\n"));
+    let block = |text: &str, start: &str, end: &str| -> (usize, usize) {
+        let s = text.find(start).unwrap_or_else(|| panic!("{start} missing"));
+        (s, s + text[s..].find(end).unwrap_or_else(|| panic!("{end} missing after {start}")))
+    };
+    let (gs, ge) = block(&glo, "[clouds_patches]\n", "[something_else]");
+    let (cs, ce) = block(&gecho, "[clouds_patches_granular]", "[something_else]");
+    std::fs::write(out, [&glo[..gs], &gecho[cs..ce], &glo[ge..]].concat()).unwrap();
 }
 
 fn firmware_build(root: &Path, fw: &Path) -> cc::Build {
@@ -63,10 +119,14 @@ fn main() {
     let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
     assert!(target_env != "msvc", "the firmware shim needs pthreads and C11 atomics: build with x86_64-pc-windows-gnu (MinGW)");
 
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    whale_config(&fw.join("../data"), &out_dir.join("config_glo.txt"));
+
     let c_objs = firmware_build(&root, &fw)
         .std("gnu11")
         .files(sources(&fw, &["c"]))
         .file(root.join("port/src/agc_port.c"))
+        .file(root.join("port/src/gecho_stubs.c"))
         .compile_intermediates();
     let shim_objs = cc::Build::new()
         .include(root.join("port/include"))
@@ -96,4 +156,5 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", root.join("port").display());
     println!("cargo:rerun-if-changed={}", fw.display());
+    println!("cargo:rerun-if-changed={}", fw.join("../data").display());
 }

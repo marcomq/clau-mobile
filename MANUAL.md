@@ -1,9 +1,11 @@
 # Clau manual
 
-Clau runs the original firmware of Glo, "the Polyphonic Whale" (v1.0), on your phone. The phone's screen
+Clau runs the original firmware of Glo, "the Polyphonic Whale" (v1.0.118), on your phone. The phone's screen
 replaces Glo's three buttons, the phone's tilt replaces Glo's accelerometer, and its microphone replaces Glo's
-microphones. Everything you hear is made by the unmodified Glo firmware, so this manual follows the official
-[Glo owner's manual and extended manual v1.00](https://phonicbloom.com/glo/manual/) and adds what is different on a phone.
+microphones. Everything you hear is made by the Glo firmware; Clau only fixes a few memory bugs in it and adds the
+Infinite looper to the channel list. This manual follows the official
+[Glo owner's manual and extended manual v1.00](https://phonicbloom.com/glo/manual/) and adds what is different in
+v1.0.118 and on a phone.
 
 Clau is an independent project, not affiliated with or endorsed by Phonicbloom, gechologic or the Glo project
 (see [Disclaimer](#disclaimer)).
@@ -52,7 +54,7 @@ Clau is an independent project, not affiliated with or endorsed by Phonicbloom, 
 | Ring in the middle | Joystick: drag inside it to tilt the virtual Glo, on top of the phone's own tilt. Half-way to the edge tilts by 90°, the edge turns it upside down. Let go to return. |
 | Visuals | Colour = Glo's LED (it signals modes, see each channel), shape = the sound. |
 | **◎** (top left) | Calibrate: your current way of holding the phone becomes "Glo lying flat". Also done at start. |
-| **Lock** (next to ◎) | Hold 10 s to unlock all 24 channels; hold 3 s to lock the extra ones again. A ring shows the progress, the status line counts down. Clau restarts afterwards. Open and orange = unlocked. |
+| **Lock** (next to ◎) | Hold 10 s to unlock all 25 channels; hold 3 s to lock the extra ones again. A ring shows the progress, the status line counts down. Clau restarts afterwards. Open and orange = unlocked. |
 | **?** | What the current channel does and how to control it. Tap anywhere to close. |
 | **ⓘ** | About, licenses and the disclaimer. |
 | `mic: built-in` / `mic: USB` (Android) | Tap to switch to a USB microphone when one is connected. **−** / **+** next to it trim the mic sensitivity in 3 dB steps. |
@@ -66,12 +68,12 @@ On a computer: keys `1` = ▷, `2` = +, `3` = −, arrow keys tilt, the mouse dr
 |---|---|
 | Next channel | Tap **▷**. After the last channel it starts again at the first. |
 | Volume | Hold **+** or **−**. The volume changes after half a second and is saved. |
-| Channel options | Hold **▷** for 1 s (the printed manual says 2 s; the v1.0 firmware reacts after 1 s). What it does depends on the channel. |
+| Channel options | Hold **▷** for 1 s (the printed manual says 2 s; the firmware reacts after 1 s). What it does depends on the channel. |
 | Move a channel to the front | While the channel plays, hold **▷** and **+** together for 2 s. A melodic beep confirms; next time it is the first channel. Repeat with other channels to build your own order. |
 | Calibrate tilt | Tap **◎** while holding the phone the way you want to play it. |
 | Power on again | Hold **▷** (only needed after Clau switched itself off, see [Differences](#differences-from-the-glo)). |
 
-The 12 main channels are available right away; 12 more need to be [unlocked](#unlock-all-channels).
+The 12 main channels are available right away; 13 more need to be [unlocked](#unlock-all-channels).
 
 ## Tilt
 
@@ -114,11 +116,11 @@ takes it but does nothing, "no effect in this channel" or "not a command". Taps 
 ### Unlock all channels
 
 Hold the lock next to **◎** for 10 seconds, or key in the Glo's own sequence **− + − + − + − + ▷** (four times
-minus-plus, then play; a voice message confirms). Clau restarts with all 24 channels and remembers it. To hide
+minus-plus, then play; a voice message confirms). Clau restarts with all 25 channels and remembers it. To hide
 the extra channels again, hold the lock for 3 seconds; the factory reset also locks them. Locking or unlocking
 resets the channel order.
 
-### In the nature channels (1 Earth, 2 Wind, 3 Water, 13 and 17–24 Water variants)
+### In the nature channels (1 Earth, 2 Wind, 3 Water, 4 Fire, 9 Space, 13 and 17–24 Water variants)
 
 | Sequence | Effect | Saved? |
 |---|---|---|
@@ -131,9 +133,9 @@ resets the channel order.
 
 ## Settings menu
 
-Hold **+** and **−** together for 2 s (two fingers, left and right). One beep: you are at option A. Tap **▷** to
+Hold **+** and **−** together for 1 s (two fingers, left and right). One beep: you are at option A. Tap **▷** to
 go to the next option (two, three, four beeps). Tapping **▷** after option D, or holding **▷**, leaves the menu.
-While an option is selected, holding **+** and **−** for 2 s resets it to its default. Settings are saved.
+While an option is selected, holding **+** and **−** for 1 s resets it to its default. Settings are saved.
 
 | Option | **−** | **+** |
 |---|---|---|
@@ -176,16 +178,19 @@ Default order. The status line and the **?** overlay show the channel name; afte
 2. **Wind**: wind generated from filtered noise, with a calm chord progression. Binaural: theta.
 3. **Water**: sea waves; high-pass filters, chords from "Rachel's Song". Binaural: delta.
 4. **Fire**: a trip to space: noise and your sounds through filters whose frequencies follow the tilt, with
-   reverb. The v1.0 firmware has no **+** / **−** commands and no tilt echo here (the official manual lists the
-   nature-channel commands for it). Binaural: beta.
+   reverb. Tilt left: less reverb. Stand it up or turn it over: echo, as in the nature channels (no arpeggio).
+   The nature-channel commands work here too; low-/high-pass and resonance are the audible ones, because the
+   filters follow the tilt instead of the chords. Binaural: beta.
 5. **Reverb**: a decaying reverb whose buffer slowly changes size, heard as a pitch gliding down or up.
    - Tilt away / toward you: low-pass filter (away = darker; useful to leave only humming or drumming).
-   - Tilt left / right: echo timing.
+   - Stand it up or turn it over: echo, shorter the further you go (as in the nature channels).
    - **+** pitch glides up, **−** pitch glides down, hold **▷** stops the glide.
-6. **Granular sampler**: records tiny grains of sound continuously and plays them back as a chord.
+6. **Granular sampler**: records tiny grains of sound and plays them back as a chord.
+   - It starts frozen (LED green). Tap **▷** to start recording (LED red); hold **▷** to freeze the current
+     grains again. Tapping **▷** while recording moves to the next channel.
    - Tilt left / right: minor / major chord and wider stereo. Tilt away / toward you: more / fewer voices.
    - **−** detunes the chord (repeatable), **+** undoes it, **+ +** plays a song instead of a static chord.
-   - Hold **▷**: record and hold the current sample; tap **▷** to release it.
+     Tap faster than elsewhere: a sequence ends after half a second.
 7. **DCO "Seasick Jonah"**: 32 oscillators in stereo plus a delay line that records your sounds.
    - Tilt left / right selects a parameter, shown by the LED: frequency (white), spread (cyan), phase (pink),
      envelope (green), resonance (red). Tilt away / toward you changes its value; the scale wraps around near
@@ -199,10 +204,11 @@ Default order. The status line and the **?** overlay show the channel name; afte
    after it came back to the middle. The Glo is held upright for this; in Clau the way you hold the phone (◎)
    already counts as upright. LED: blue kick, red snare, green cymbal, pink hi-hat.
    Hold **▷**: echo on / off, cycling through timings.
-9. **Space**: like Fire, without reverb (also without **+** / **−** commands). Binaural: beta.
+9. **Space**: like Fire, without reverb; tilt away from you for louder noise. Binaural: beta.
 10. **Clouds**: Émilie Gillet's Mutable Instruments Clouds, a granular texture processor for your sounds.
     **+** / **−** next / previous patch, **+ +** / **− −** raise / lower the hard limiter, hold **▷** freeze
-    on / off (LED blue = frozen, cyan = live). Too much feedback or reverb can run away: lower the volume first.
+    on / off (LED blue = frozen, cyan = live); while frozen, a tap on **▷** unfreezes instead of changing the
+    channel. Tap faster than elsewhere: a sequence ends after half a second. Too much feedback or reverb can run away: lower the volume first.
     (**+ + +** / **− − −** enter / leave a parameter editing mode that reports over the Glo's USB serial port; not useful in Clau.)
 11. **Dekrispator**: Xavier Halgand's synth with an internal sequencer; your sounds mix in before its effects.
     **+** / **−** next / previous patch, **+ +** next sequence (then random ones), **− −** last random patch,
@@ -225,24 +231,27 @@ Default order. The status line and the **?** overlay show the channel name; afte
 20. **Water (creek)**, high-pass filters, "Freedom of Creation".
 21.–23. **Water (sea 1, sea 1+2, sea 2)**: chord progression from Paul Lansky's "Notjustmoreidlechatter".
 24. **Voiceover**: high-pass filters over a voiceover background, "Notjustmoreidlechatter".
+25. **Infinite looper**: your sounds on an endless tape loop, played back at a changeable speed (from the Gecho,
+    channel 8 on the Whale v2). **+** / **−** tape faster / slower (pitch up / down), **+ +** / **− −** the loop
+    fades slower / faster. Tilt has no effect: the Gecho controls it with IR sensors the Whale lacks.
 
 Channels 13 and 17–24 work like the nature channels (tilt, commands, binaural beats where noted).
 
 ## Differences from the Glo
 
-Clau runs the firmware unchanged, but a phone is not a Glo:
+Clau runs the firmware with only bug fixes, but a phone is not a Glo:
 
 | On the Glo | In Clau |
 |---|---|
 | **▷** and **−** together switch it off | Not available: on the Glo this is done by the power circuit, not the firmware. Close the app instead. |
 | Switches itself off after 1 hour on the same channel (`AUTO_POWER_OFF_TIMEOUT`) | Same: the sound fades out and the status line shows "off". Hold **▷** to start again. |
-| Hold **▷** 2 s for options, **▷** + **+** 5 s to move a channel (printed manual) | 1 s and 2 s: what the v1.0 firmware actually does |
+| Hold **▷** 2 s for options, **▷** + **+** 5 s to move a channel (printed manual) | 1 s and 2 s: what the firmware actually does |
 | **+** and **−** tapped together toggle the microphones | No effect (the audio chip is not emulated) |
 | Equalizer (settings option A) | No effect (same reason) |
 | 6× **+** / **−** change the mic gain limit by 6 dB | 12 dB, because phone microphones behave differently; the start value is also lower |
-| Fire and Space react to the nature-channel commands (tuning, chords, filters, resonance) | Not in the v1.0 firmware: it skips that code for these two channels, so the status line shows "no effect". Same on a real Glo with v1.0. |
+| 24 channels after unlocking | 25: the Infinite looper from the same firmware is added at the end, as on the Whale v2 |
 | Line input, USB serial output | Not available |
-| Light sensor (Glo v2 / v3) | Not part of v1.0 |
+| Light sensor (Glo v2 / v3) | Not part of the v1.0.118 firmware |
 | Voice messages and backgrounds from the official sample image | Synthesized replacements unless you supply the official image yourself (see README) |
 | Restart / factory reset re-initialises everything | The firmware restarts, but values it keeps in memory (e.g. the mic gain limit) last until the app is closed |
 

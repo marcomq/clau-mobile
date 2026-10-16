@@ -11,7 +11,8 @@ extern int codec_digital_volume, codec_analog_volume;
 extern int channel_loop, channel_loop_remapped;
 extern int short_press_seq_ptr, short_press_seq_cnt, short_press_sequence, short_press_volume_plus, short_press_volume_minus;
 extern char short_press_seq[];
-extern int glo_run;
+extern int button_play, button_volume_plus, button_volume_minus, button_volume_both, short_press_button_play;
+extern uint8_t glo_run;
 extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
 
 #define CODEC_DIGITAL_MUTE 0x80
@@ -68,8 +69,9 @@ void glo_set_config(const char *text, size_t len)
 {
     free(pending_config);
     pending_config = malloc(len);
-    memcpy(pending_config, text, len);
-    pending_config_len = len;
+    pending_config_len = pending_config ? len : 0;
+    if (pending_config)
+        memcpy(pending_config, text, len);
 }
 
 void glo_set_samples(const uint8_t *data, size_t len)
@@ -142,12 +144,14 @@ static void apply_pending_unlock(void)
 }
 
 /* A restart clears the Glo's RAM and the firmware relies on that: a stale channel_loop can exceed the channel count
- * after locking, and a sequence typed before the restart would be decoded again. */
+ * after locking, a sequence typed before the restart would be decoded again, and a reset fired while a press was
+ * being released leaves its counter set, which the next boot reads as another short press. */
 static void reset_firmware_state(void)
 {
-    channel_loop = 0;
+    channel_loop = channel_loop_remapped = 0;
     short_press_seq_ptr = short_press_seq_cnt = 0;
     short_press_sequence = short_press_volume_plus = short_press_volume_minus = 0;
+    button_play = button_volume_plus = button_volume_minus = button_volume_both = short_press_button_play = 0;
 }
 
 static void *supervisor(void *arg)

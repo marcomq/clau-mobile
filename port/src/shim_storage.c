@@ -71,6 +71,8 @@ static esp_err_t read_exact(nvs_handle_t h, const char *key, void *out, size_t w
 {
     size_t len = want;
     char tmp[8];
+    if (want > sizeof tmp)
+        return ESP_ERR_NVS_INVALID_LENGTH;
     esp_err_t rc = read_key(h, key, tmp, &len);
     if (rc != ESP_OK)
         return rc;
@@ -89,7 +91,7 @@ esp_err_t nvs_open(const char *name, nvs_open_mode_t mode, nvs_handle_t *out)
         return ESP_ERR_NVS_INVALID_NAME;
     for (int i = 0; i < MAX_HANDLES; i++) {
         if (!handle_ns[i][0]) {
-            strcpy(handle_ns[i], name);
+            snprintf(handle_ns[i], sizeof handle_ns[i], "%s", name);
             char dir[1100];
             snprintf(dir, sizeof dir, "%s/%s", nvs_root, name);
             if (mkdir(dir, 0755) != 0 && errno != EEXIST)
@@ -131,12 +133,16 @@ esp_err_t nvs_erase_all(nvs_handle_t h)
 }
 
 esp_err_t nvs_set_i8(nvs_handle_t h, const char *key, int8_t v) { return write_key(h, key, &v, sizeof v); }
+esp_err_t nvs_set_u8(nvs_handle_t h, const char *key, uint8_t v) { return write_key(h, key, &v, sizeof v); }
+esp_err_t nvs_set_u32(nvs_handle_t h, const char *key, uint32_t v) { return write_key(h, key, &v, sizeof v); }
 esp_err_t nvs_set_i16(nvs_handle_t h, const char *key, int16_t v) { return write_key(h, key, &v, sizeof v); }
 esp_err_t nvs_set_u64(nvs_handle_t h, const char *key, uint64_t v) { return write_key(h, key, &v, sizeof v); }
 esp_err_t nvs_set_str(nvs_handle_t h, const char *key, const char *v) { return write_key(h, key, v, strlen(v) + 1); }
 esp_err_t nvs_set_blob(nvs_handle_t h, const char *key, const void *v, size_t len) { return write_key(h, key, v, len); }
 
 esp_err_t nvs_get_i8(nvs_handle_t h, const char *key, int8_t *v) { return read_exact(h, key, v, sizeof *v); }
+esp_err_t nvs_get_u8(nvs_handle_t h, const char *key, uint8_t *v) { return read_exact(h, key, v, sizeof *v); }
+esp_err_t nvs_get_u32(nvs_handle_t h, const char *key, uint32_t *v) { return read_exact(h, key, v, sizeof *v); }
 esp_err_t nvs_get_i16(nvs_handle_t h, const char *key, int16_t *v) { return read_exact(h, key, v, sizeof *v); }
 esp_err_t nvs_get_u64(nvs_handle_t h, const char *key, uint64_t *v) { return read_exact(h, key, v, sizeof *v); }
 esp_err_t nvs_get_str(nvs_handle_t h, const char *key, char *out, size_t *len) { return read_key(h, key, out, len); }

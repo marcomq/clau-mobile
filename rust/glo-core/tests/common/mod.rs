@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 pub const RATE: u32 = 48_000;
 const BLOCK: usize = 256;
 const MIC_HZ: f32 = 330.0;
+/// v1.0.118 Granular starts frozen: the first U1 starts sampling, the second switches channel.
+const GRANULAR_ID: i32 = 5;
 
 /// Output measured over a time window.
 #[derive(Clone, Copy, Debug, Default)]
@@ -134,7 +136,10 @@ impl Glo {
                 'c' => glo_core::BUTTON_U3,
                 _ => panic!("unknown key {c}"),
             };
-            self.hold(idx, Duration::from_millis(100));
+            // A short press needs >5 ticks of the 10 ms button scan (hw/ui.c). Under host load a 100 ms
+            // hold got fewer and the tap was lost ("timed out waiting for channel change", mostly at Fire).
+            // Hold + gap must stay below BUTTONS_SEQUENCE_TIMEOUT_SHORT (500 ms) for sequences.
+            self.hold(idx, Duration::from_millis(200));
             sleep(Duration::from_millis(150));
         }
     }
@@ -144,10 +149,30 @@ impl Glo {
         self.wait_until(Duration::from_secs(5), "sequence decoded", || glo_core::button_sequence().is_empty());
     }
 
+    /// Output volume once the fade-in after a channel start has finished.
+    pub fn settled_volume(&self) -> Option<f32> {
+        let mut last = glo_core::volume_db();
+        let mut stable = 0;
+        self.wait_until(Duration::from_secs(10), "volume settled", || {
+            let v = glo_core::volume_db();
+            stable = if v == last { stable + 1 } else { 0 };
+            last = v;
+            stable >= 30
+        });
+        last
+    }
+
     /// Taps U1 and waits for the next channel to start and the tap to leave the sequence buffer.
     pub fn next_channel(&self) -> i32 {
         let before = glo_core::channel();
         self.tap("a");
+        if glo_core::channel_id() == GRANULAR_ID {
+            self.wait_decoded();
+            sleep(Duration::from_millis(500));
+            if glo_core::channel() == before {
+                self.tap("a");
+            }
+        }
         self.wait_until(Duration::from_secs(5), "channel change", || glo_core::channel() != before);
         self.wait_decoded();
         sleep(Duration::from_millis(300));

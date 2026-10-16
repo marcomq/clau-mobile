@@ -512,7 +512,6 @@ void nvs_close(nvs_handle_t h);
 esp_err_t nvs_commit(nvs_handle_t h);
 esp_err_t nvs_erase_key(nvs_handle_t h, const char *key);
 esp_err_t nvs_erase_all(nvs_handle_t h);
-esp_err_t nvs_erase_namespace(nvs_handle_t h, const char *ns);
 esp_err_t nvs_set_i8(nvs_handle_t h, const char *key, int8_t v);
 esp_err_t nvs_set_u8(nvs_handle_t h, const char *key, uint8_t v);
 esp_err_t nvs_set_i16(nvs_handle_t h, const char *key, int16_t v);

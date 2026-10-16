@@ -93,6 +93,29 @@ int i2s_pop_sample(i2s_port_t port, void *sample, TickType_t ticks)
     return 4;
 }
 
+esp_err_t i2s_write(i2s_port_t port, const void *src, size_t size, size_t *bytes_written, TickType_t ticks)
+{
+    for (size_t i = 0; i + 4 <= size; i += 4)
+        i2s_push_sample(port, (const uint8_t *)src + i, ticks);
+    if (bytes_written)
+        *bytes_written = size & ~(size_t)3;
+    return ESP_OK;
+}
+
+/* Frames the host has not delivered yet read as silence, so the firmware never blocks on the mic. */
+esp_err_t i2s_read(i2s_port_t port, void *dest, size_t size, size_t *bytes_read, TickType_t ticks)
+{
+    (void)port; (void)ticks;
+    for (size_t i = 0; i + 4 <= size; i += 4) {
+        uint32_t v = 0;
+        ring_get(&in_ring, &v);
+        memcpy((uint8_t *)dest + i, &v, 4);
+    }
+    if (bytes_read)
+        *bytes_read = size & ~(size_t)3;
+    return ESP_OK;
+}
+
 esp_err_t i2s_driver_install(i2s_port_t port, const i2s_driver_config_t *cfg, int queue_size, void *queue)
 {
     (void)port; (void)queue_size; (void)queue;

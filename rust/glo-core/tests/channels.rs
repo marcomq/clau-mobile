@@ -3,8 +3,10 @@ mod common;
 use std::time::Duration;
 
 const DEFAULT_CHANNELS: i32 = 12;
-/// Channels that only process the microphone or wait for a gesture (reverb, granular, drum kit).
-const NEEDS_INPUT: &[i32] = &[4, 5, 7];
+/// Channels that only process the microphone or wait for a gesture (reverb, granular, drum kit, Clouds).
+const NEEDS_INPUT: &[i32] = &[4, 5, 7, 9];
+/// Starts frozen with an empty buffer (v1.0.118).
+const GRANULAR: i32 = 5;
 
 #[test]
 fn default_channels_play_in_order() {
@@ -15,10 +17,15 @@ fn default_channels_play_in_order() {
     for ch in 0..DEFAULT_CHANNELS {
         assert_eq!((glo_core::channel(), glo_core::channel_id()), (ch, ch), "default channel order");
         let dry = glo.listen(Duration::from_millis(1500));
+        if ch == GRANULAR {
+            glo.tap("a");
+            glo.wait_decoded();
+            assert_eq!(glo_core::channel(), ch, "the first U1 in Granular starts sampling instead of switching");
+        }
         glo.mic(true);
         let wet = glo.listen(Duration::from_millis(1500));
         glo.mic(false);
-        eprintln!("channel {ch}: dry {dry:?}, mic {wet:?}");
+        eprintln!("channel {ch}: dry {dry:?}, mic {wet:?}, volume {:?} dB", glo_core::volume_db());
         for w in [dry, wet] {
             assert!(!w.non_finite, "channel {ch} produced NaN/inf");
             assert!(w.peak <= 1.0, "channel {ch} clips: {w:?}");

@@ -12,8 +12,8 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 use std::path::Path;
 
-/// Default flash config, overridable by `<data_dir>/config_glo.txt`.
-pub const DEFAULT_CONFIG: &[u8] = include_bytes!("../../../firmware/data/config_glo.txt");
+/// Default flash config (firmware `config_glo.txt` plus the Gecho Clouds patches), overridable by `<data_dir>/config_glo.txt`.
+pub const DEFAULT_CONFIG: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/config_glo.txt"));
 
 pub const BUTTON_PWR: i32 = 1;
 pub const BUTTON_U2: i32 = 2;
