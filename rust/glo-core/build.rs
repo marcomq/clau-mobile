@@ -38,6 +38,8 @@ fn firmware_build(root: &Path, fw: &Path) -> cc::Build {
     for d in FW_INCLUDE_DIRS {
         b.include(fw.join(d));
     }
+    // Searched last, so a case-insensitive file system never picks an alias over the real header.
+    b.include(root.join("port/case"));
     b.define("GLO_PORT", None)
         .define("BOARD_WHALE", None)
         .define("ESP_PLATFORM", None)

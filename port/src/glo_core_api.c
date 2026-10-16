@@ -9,7 +9,7 @@
 extern void app_main(void);
 extern int codec_digital_volume, codec_analog_volume;
 extern int channel_loop, channel_loop_remapped;
-extern int short_press_seq_ptr, short_press_sequence, short_press_volume_plus, short_press_volume_minus;
+extern int short_press_seq_ptr, short_press_seq_cnt, short_press_sequence, short_press_volume_plus, short_press_volume_minus;
 extern char short_press_seq[];
 extern int glo_run;
 extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
@@ -90,12 +90,27 @@ static size_t load_file(const char *name, uint8_t *dst, size_t max)
     return n;
 }
 
+/* Every [binaural_beats_program] line ends in "420:0]": parse_binaural_def() then scans past the line for a ','
+ * (garbage on the ESP32, a fault on the host when the heap ends there). */
+static void fix_binaural_programs(char *cfg)
+{
+    char *p = strstr(cfg, "[binaural_beats_program]");
+    if (!p)
+        return;
+    char *end = strstr(p + 1, "\n[");
+    while ((p = strstr(p, ":[")) && (!end || p < end))
+        for (p += 2; *p && *p != ']' && *p != '\n'; p++)
+            if (*p == ':')
+                *p = ',';
+}
+
 static void load_flash(void)
 {
     uint8_t *cfg = glo_flash + GLO_FLASH_CONFIG_ADDR;
     size_t cfg_max = GLO_FLASH_CONFIG_SIZE - 1; /* keep a NUL so strstr() terminates */
     if (!load_file("config_glo.txt", cfg, cfg_max) && pending_config)
         memcpy(cfg, pending_config, pending_config_len < cfg_max ? pending_config_len : cfg_max);
+    fix_binaural_programs((char *)cfg);
 
     uint8_t *smp = glo_flash + GLO_FLASH_SAMPLES_ADDR;
     size_t smp_max = GLO_FLASH_SIZE - GLO_FLASH_SAMPLES_ADDR;
@@ -126,6 +141,15 @@ static void apply_pending_unlock(void)
     nvs_close(h);
 }
 
+/* A restart clears the Glo's RAM and the firmware relies on that: a stale channel_loop can exceed the channel count
+ * after locking, and a sequence typed before the restart would be decoded again. */
+static void reset_firmware_state(void)
+{
+    channel_loop = 0;
+    short_press_seq_ptr = short_press_seq_cnt = 0;
+    short_press_sequence = short_press_volume_plus = short_press_volume_minus = 0;
+}
+
 static void *supervisor(void *arg)
 {
     (void)arg;
@@ -135,6 +159,7 @@ static void *supervisor(void *arg)
         glo_i2s_reset();
         glo_nvs_set_root(glo_data_dir);
         apply_pending_unlock();
+        reset_firmware_state();
         glo_rtos_reset_clock();
         /* The published v1.0 source never sets this (later releases do in app_main), leaving only the fallback loop. */
         glo_run = 1;
