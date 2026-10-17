@@ -174,16 +174,22 @@ impl AudioEngine {
         let mut scratch = vec![0.0f32; MAX_FRAMES * 2];
         let mut mic = vec![0.0f32; MAX_FRAMES * 2];
         let mut mic_last = [0.0f32; 2];
+        let mut out_max = 0usize;
         let output = out_dev
             .build_output_stream(
                 config(&opts, out_ch),
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    // Keep mic latency bounded: drop what piled up beyond two callbacks of either stream.
-                    let keep = data.len().max(mic_chunk.load(Ordering::Relaxed)) * 2;
+                    // Keep mic latency bounded: drop what piled up beyond three of the largest callbacks of either
+                    // stream (Bluetooth alternates small and large output callbacks, e.g. 28 and 932 frames).
+                    out_max = out_max.max(data.len());
+                    let keep = out_max.max(mic_chunk.load(Ordering::Relaxed)) * 3;
                     let excess = mic_rx.slots().saturating_sub(keep) & !1;
                     for _ in 0..excess {
                         let _ = mic_rx.pop();
                     }
+                    // Short of a whole callback (output bursts larger than the mic's, e.g. Bluetooth): hold the mic
+                    // once so a backlog builds up, instead of a gap at the end of every callback.
+                    let starved = mic_rx.slots() < data.len();
                     for chunk in data.chunks_mut(MAX_FRAMES * out_ch as usize) {
                         let frames = chunk.len() / out_ch as usize;
                         let out = &mut scratch[..frames * 2];
@@ -191,7 +197,8 @@ impl AudioEngine {
                             let m = &mut mic[..frames * 2];
                             // A gap fades out instead of dropping to zero, which would click.
                             for (i, s) in m.iter_mut().enumerate() {
-                                *s = mic_rx.pop().unwrap_or(mic_last[i & 1] * 0.995);
+                                let fade = mic_last[i & 1] * 0.995;
+                                *s = if starved { fade } else { mic_rx.pop().unwrap_or(fade) };
                                 mic_last[i & 1] = *s;
                             }
                             Some(&m[..])
