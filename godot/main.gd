@@ -33,6 +33,7 @@ Clau is an independent project. It is not affiliated with, endorsed or supported
 
 Copyright (C) 2026 Marco Mengelkoch. This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3. It comes with ABSOLUTELY NO WARRANTY. License: https://www.gnu.org/licenses/gpl-3.0.html
 Source code: https://github.com/marcomq/clau-mobile
+Privacy: Clau collects no data. Microphone audio is processed on the device only and never recorded or sent. Policy: https://github.com/marcomq/clau-mobile/blob/main/PRIVACY.md
 
 Includes: Glo firmware (GPL-3.0), Mutable Instruments Clouds and stmlib by Olivier Gillet (MIT), Dekrispator by Xavier Halgand with code by Sean Bolton and Julian Schmidt (GPL), godot-rust (MPL-2.0), cpal (Apache-2.0) and other Rust crates (MIT / Apache-2.0). Full list: NOTICE.md in the source.
 

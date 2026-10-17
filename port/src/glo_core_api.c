@@ -26,8 +26,8 @@ extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
 /* Each 6x U2 / 6x U3 moves the max gain away from config_glo.txt's default 32 dB twice as far as on the Glo. */
 #define AGC_REF_DB 32
 #define AGC_STEP_SCALE 2
-/* Below ~-40 dBFS input is phone-mic self-noise: expand it down instead of amplifying it to the target. */
-#define AGC_NOISE_GATE 0.01f
+/* Below ~-46 dBFS input is phone-mic self-noise: expand it down instead of amplifying it to the target. */
+#define AGC_NOISE_GATE 0.005f
 /* The firmware scales the mic by 0.0025 x 64 x 9 and casts to int16 unclamped: above ~0.69 it wraps (a loud crack),
  * and echo feedback adds on top. Peaks the AGC attack lets through are bent softly under this ceiling. */
 #define MIC_KNEE 0.3f

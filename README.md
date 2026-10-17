@@ -5,7 +5,7 @@ unmodified on Android (and macOS) inside a Godot app. The repository is clau-mob
 `GloNode`, `glo_*`) keep the glo prefix, and the Android package id is `io.github.marcomq.clau`.
 
 **How to play it: see the [manual](MANUAL.md)** (controls, tilt, button commands, settings, all channels,
-differences from the Glo).
+differences from the Glo). Privacy: [PRIVACY.md](PRIVACY.md) (no data is collected).
 
 > **Disclaimer:** Clau is an independent, unofficial project. It is not affiliated with, endorsed or supported by
 > Phonicbloom, gechologic or the Glo project, and claims no trademark, brand or other rights to their names or
