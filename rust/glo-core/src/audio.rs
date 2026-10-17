@@ -10,19 +10,29 @@ const MAX_FRAMES: usize = 4096;
 /// USB mics hiss far less than phone mics, so the AGC would lift room noise to full level.
 const USB_MIC_OFFSET_DB: i32 = 15;
 
+/// Which microphone to record from (Android). Unavailable sources fall back to the built-in mic.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum MicSource {
+    #[default]
+    Builtin,
+    Usb,
+    /// Wired or Bluetooth headset mic (USB headsets count as `Usb`).
+    Headset,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct AudioOptions {
     pub sample_rate: u32,
     /// Device callback size in frames; `None` lets the platform choose (AAudio: one burst).
     pub buffer_frames: Option<u32>,
     pub use_mic: bool,
-    /// Android: record from a USB microphone when one is connected, instead of the built-in mic.
-    pub usb_mic: bool,
+    /// Android: the preferred microphone, used when it is connected.
+    pub mic_source: MicSource,
 }
 
 impl Default for AudioOptions {
     fn default() -> Self {
-        Self { sample_rate: 48_000, buffer_frames: None, use_mic: true, usb_mic: false }
+        Self { sample_rate: 48_000, buffer_frames: None, use_mic: true, mic_source: MicSource::Builtin }
     }
 }
 
@@ -32,7 +42,7 @@ pub struct AudioEngine {
     pub sample_rate: u32,
     pub mic_active: bool,
     pub mic_name: Option<String>,
-    pub mic_usb: bool,
+    pub mic_source: MicSource,
 }
 
 fn config(opts: &AudioOptions, channels: u16) -> StreamConfig {
@@ -75,20 +85,30 @@ fn is_usb_mic_output(out: &cpal::DeviceDescription, inputs: &[(cpal::Device, cpa
         && inputs.iter().any(|(_, i)| i.interface_type() == InterfaceType::Usb && i.name() == out.name())
 }
 
+fn mic_source_of(desc: &cpal::DeviceDescription) -> Option<MicSource> {
+    use cpal::{DeviceType, InterfaceType};
+    if desc.interface_type() == InterfaceType::Usb {
+        Some(MicSource::Usb)
+    } else if desc.device_type() == DeviceType::Headset {
+        Some(MicSource::Headset)
+    } else if desc.device_type() == DeviceType::Microphone {
+        Some(MicSource::Builtin)
+    } else {
+        None
+    }
+}
+
 /// On Android the default input follows routing, so a headset would take over the mic; pin the built-in one,
-/// or a USB microphone when `usb_mic` is set and one is connected.
+/// or the preferred `source` when it is connected.
 #[cfg(target_os = "android")]
-fn input_device(host: &cpal::Host, usb_mic: bool) -> Option<cpal::Device> {
+fn input_device(host: &cpal::Host, source: MicSource) -> Option<cpal::Device> {
     let mut devs = android_devices(host, true);
-    let usb = usb_mic
-        .then(|| devs.iter().position(|(_, d)| d.interface_type() == cpal::InterfaceType::Usb))
-        .flatten();
-    let builtin = devs.iter().position(|(_, d)| d.device_type() == cpal::DeviceType::Microphone);
-    usb.or(builtin).map(|i| devs.swap_remove(i).0).or_else(|| host.default_input_device())
+    let find = |s| devs.iter().position(|(_, d)| mic_source_of(d) == Some(s));
+    find(source).or_else(|| find(MicSource::Builtin)).map(|i| devs.swap_remove(i).0).or_else(|| host.default_input_device())
 }
 
 #[cfg(not(target_os = "android"))]
-fn input_device(host: &cpal::Host, _usb_mic: bool) -> Option<cpal::Device> {
+fn input_device(host: &cpal::Host, _source: MicSource) -> Option<cpal::Device> {
     host.default_input_device()
 }
 
@@ -109,18 +129,19 @@ pub fn headphones_connected() -> Option<bool> {
     None
 }
 
-/// Whether a USB microphone is connected (Android). `None` when unknown.
+/// Connected microphone sources (Android), in `MicSource` order without duplicates. `None` when unknown.
 #[cfg(target_os = "android")]
-pub fn usb_mic_connected() -> Option<bool> {
+pub fn mic_sources() -> Option<Vec<MicSource>> {
     if !crate::android::init_context() {
         return None;
     }
     let inputs = android_devices(&cpal::default_host(), true);
-    Some(inputs.iter().any(|(_, d)| d.interface_type() == cpal::InterfaceType::Usb))
+    let found: Vec<_> = inputs.iter().filter_map(|(_, d)| mic_source_of(d)).collect();
+    Some([MicSource::Builtin, MicSource::Usb, MicSource::Headset].into_iter().filter(|s| found.contains(s)).collect())
 }
 
 #[cfg(not(target_os = "android"))]
-pub fn usb_mic_connected() -> Option<bool> {
+pub fn mic_sources() -> Option<Vec<MicSource>> {
     None
 }
 
@@ -135,9 +156,9 @@ impl AudioEngine {
         let mic_chunk_in = mic_chunk.clone();
         let mut input = None;
         let mut mic_name = None;
-        let mut mic_usb = false;
+        let mut mic_source = MicSource::Builtin;
         if opts.use_mic {
-            if let Some(in_dev) = input_device(&host, opts.usb_mic) {
+            if let Some(in_dev) = input_device(&host, opts.mic_source) {
                 let in_ch = in_dev.default_input_config().map(|c| c.channels()).unwrap_or(1).clamp(1, 2);
                 let built = in_dev.build_input_stream(
                     config(&opts, in_ch),
@@ -159,9 +180,8 @@ impl AudioEngine {
                     Ok(s) => {
                         input = Some(s);
                         let desc = in_dev.description().ok();
-                        let usb = desc.as_ref().is_some_and(|d| d.interface_type() == cpal::InterfaceType::Usb);
-                        crate::set_mic_offset_db(if usb { USB_MIC_OFFSET_DB } else { 0 });
-                        mic_usb = usb;
+                        mic_source = desc.as_ref().and_then(mic_source_of).unwrap_or_default();
+                        crate::set_mic_offset_db(if mic_source == MicSource::Usb { USB_MIC_OFFSET_DB } else { 0 });
                         mic_name = desc.map(|d| d.name().to_string());
                     }
                     Err(e) => eprintln!("glo: microphone unavailable: {e}"),
@@ -215,6 +235,6 @@ impl AudioEngine {
             .map_err(|e| format!("output stream: {e}"))?;
         output.play().map_err(|e| format!("output play: {e}"))?;
 
-        Ok(Self { _output: output, _input: input, sample_rate: rate, mic_active, mic_name, mic_usb })
+        Ok(Self { _output: output, _input: input, sample_rate: rate, mic_active, mic_name, mic_source })
     }
 }

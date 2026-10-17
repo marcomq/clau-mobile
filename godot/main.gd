@@ -70,9 +70,9 @@ var _calibrate := true
 var _stick_touch := -1
 var _stick := Vector2.ZERO
 var _mic_agc_db := -1
-var _usb_mic_connected := false
+var _mic_sources := PackedStringArray()
 ## Mic sensitivity trim in dB per source, on top of the firmware's AGC (6x U2 / 6x U3).
-var _mic_trim := {"builtin": 0, "usb": 0}
+var _mic_trim := {"builtin": 0, "usb": 0, "headset": 0}
 var _notice := ""
 var _notice_time := 0.0
 var _sequence := ""
@@ -98,7 +98,8 @@ func _ready() -> void:
 	if OS.get_name() == "Android":
 		var cfg := ConfigFile.new()
 		cfg.load(SETTINGS_PATH)
-		glo.usb_mic = cfg.get_value("audio", "usb_mic", false)
+		var legacy_usb: bool = cfg.get_value("audio", "usb_mic", false)
+		glo.mic_source = cfg.get_value("audio", "mic_source", "usb" if legacy_usb else "builtin")
 		for k in _mic_trim:
 			_mic_trim[k] = cfg.get_value("audio", "mic_trim_" + k, 0)
 		mic_source.visible = true
@@ -106,7 +107,7 @@ func _ready() -> void:
 		mic_up.visible = true
 		flip.visible = true
 		_set_flipped(cfg.get_value("display", "flipped", false))
-		_usb_mic_connected = glo.has_usb_mic()
+		_mic_sources = glo.get_mic_sources()
 		get_tree().on_request_permissions_result.connect(_on_permission_result)
 		if OS.request_permission(RECORD_AUDIO):
 			glo.start_audio(true, 0)
@@ -140,11 +141,15 @@ func _restart_audio() -> void:
 	glo.start_audio(OS.get_name() != "Android" or RECORD_AUDIO in OS.get_granted_permissions(), 0)
 
 
-func _toggle_usb_mic() -> void:
-	glo.usb_mic = not glo.usb_mic
+## Cycles through the connected mics (built-in, USB, headset).
+func _next_mic_source() -> void:
+	var sources: PackedStringArray = glo.get_mic_sources()
+	if sources.is_empty():
+		sources = PackedStringArray(["builtin"])
+	glo.mic_source = sources[(sources.find(glo.get_active_mic_source()) + 1) % sources.size()]
 	var cfg := ConfigFile.new()
 	cfg.load(SETTINGS_PATH)
-	cfg.set_value("audio", "usb_mic", glo.usb_mic)
+	cfg.set_value("audio", "mic_source", glo.mic_source)
 	cfg.save(SETTINGS_PATH)
 	_restart_audio()
 	_show_mic()
@@ -165,7 +170,7 @@ func _toggle_flip() -> void:
 
 
 func _mic_key() -> String:
-	return "usb" if glo.is_mic_usb() else "builtin"
+	return glo.get_active_mic_source()
 
 
 func _change_mic_trim(delta_db: int) -> void:
@@ -392,7 +397,7 @@ func _input(event: InputEvent) -> void:
 				_change_mic_trim(3)
 				return
 			if mic_source.visible and mic_source.get_global_rect().grow(16.0).has_point(event.position):
-				_toggle_usb_mic()
+				_next_mic_source()
 				return
 			if _stick_touch < 0 and event.position.distance_to(_stick_center()) < _stick_radius():
 				_stick_touch = event.index
@@ -460,8 +465,9 @@ func _process(delta: float) -> void:
 	if _headphone_check <= 0.0:
 		_headphone_check = 2.0
 		_headphones = glo.has_headphones()
-		if mic_source.visible and glo.has_usb_mic() != _usb_mic_connected:
-			_usb_mic_connected = not _usb_mic_connected
+		var sources: PackedStringArray = glo.get_mic_sources() if mic_source.visible else _mic_sources
+		if sources != _mic_sources:
+			_mic_sources = sources
 			_restart_audio()
 			_show_mic()
 	var id: int = glo.get_channel_id()
@@ -484,7 +490,7 @@ func _process(delta: float) -> void:
 		status.text += "  ·  " + _notice
 	var trim: int = _mic_trim[_mic_key()]
 	glo.set_mic_trim_db(trim)
-	mic_source.text = ("mic: USB" if glo.is_mic_usb() else "mic: built-in") + ("" if trim == 0 else "  %+d dB" % trim)
+	mic_source.text = "mic: " + {"builtin": "built-in", "usb": "USB", "headset": "headset"}[_mic_key()] + ("" if trim == 0 else "  %+d dB" % trim)
 	if not _headphones:
 		status.text = "no headphones connected: Clau is meant to be played with headphones\n" + status.text
 	status.modulate.a = 0.45 if _headphones else 0.9

@@ -23,10 +23,12 @@ jobs:
       - name: Version
         id: version
         run: |
-          if [ "${GITHUB_REF_TYPE}" = tag ]; then name="${GITHUB_REF_NAME#v}"; else name="0.0.0-${GITHUB_SHA::7}"; fi
+          name=$(./build.sh version)
+          if [ "${GITHUB_REF_TYPE}" = tag ] && [ "${GITHUB_REF_NAME}" != "v$name" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match version $name in rust/Cargo.toml"; exit 1
+          fi
+          [ "${GITHUB_REF_TYPE}" = tag ] || name="$name-${GITHUB_SHA::7}"
           echo "name=$name" >> "$GITHUB_OUTPUT"
-          sed -i "s/^version\/name=.*/version\/name=\"$name\"/; s/^version\/code=.*/version\/code=${GITHUB_RUN_NUMBER}/" \
-            godot/export_presets.cfg
 
       # Free replacement for the unlicensed official image; espeak-ng speaks the voice menu.
       - name: Sample image

@@ -1,7 +1,8 @@
 #!/bin/sh
-# Usage: ./build.sh desktop | android | release | aab | install | log
+# Usage: ./build.sh desktop | android | release | aab | install | log | version
 # release, aab: signed with GODOT_ANDROID_KEYSTORE_RELEASE_PATH / _USER / _PASSWORD
-# aab: Play Store upload, Gradle build; raise version/code in the "Android AAB" preset for every upload
+# aab: Play Store upload, Gradle build. The version comes from rust/Cargo.toml; bump it for every upload,
+# then tag the release as v<version>. version/code is major*10000 + minor*100 + patch.
 set -eu
 cd "$(dirname "$0")"
 
@@ -26,7 +27,21 @@ build_desktop() {
     cp "rust/target/${target:+$target/}release/$lib" "godot/bin/$os/"
 }
 
+version() {
+    sed -n 's/^version = "\(.*\)"/\1/p' rust/Cargo.toml | head -n 1
+}
+
+# Writes the Cargo version into both Android export presets.
+sync_version() {
+    v=$(version)
+    code=$(echo "$v" | awk -F. '{ print $1 * 10000 + $2 * 100 + $3 }')
+    sed "s/^version\/name=.*/version\/name=\"$v\"/; s/^version\/code=.*/version\/code=$code/" \
+        godot/export_presets.cfg > godot/export_presets.cfg.tmp
+    mv godot/export_presets.cfg.tmp godot/export_presets.cfg
+}
+
 build_android() {
+    sync_version
     (cd rust && cargo ndk -t arm64-v8a --platform 26 build --release -p glo-godot)
     mkdir -p godot/bin/android
     cp rust/target/aarch64-linux-android/release/libglo_godot.so godot/bin/android/
@@ -45,5 +60,6 @@ case "${1:-}" in
     aab) EXPORT=export-release PRESET="Android AAB" build_android ;;
     install) build_android && adb install -r build/clau.apk ;;
     log) adb logcat -s glo ;;
-    *) echo "usage: $0 desktop | android | release | aab | install | log" >&2; exit 1 ;;
+    version) version ;;
+    *) echo "usage: $0 desktop | android | release | aab | install | log | version" >&2; exit 1 ;;
 esac

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use glo_core::audio::{AudioEngine, AudioOptions};
+use glo_core::audio::{AudioEngine, AudioOptions, MicSource};
 use godot::classes::{INode, Input, Node};
 use godot::prelude::*;
 
@@ -23,9 +23,10 @@ pub struct GloNode {
     /// Multiplies the accelerometer (per axis) before it reaches the firmware, to fix orientation.
     #[export]
     accel_sign: Vector3,
-    /// Android: record from a USB microphone when one is connected (applies at the next `start_audio`).
+    /// Android: preferred microphone, "builtin", "usb" or "headset"; used when connected (applies at the next
+    /// `start_audio`).
     #[export]
-    usb_mic: bool,
+    mic_source: GString,
     underruns: u32,
     underrun_timer: f64,
     base: Base<Node>,
@@ -38,7 +39,7 @@ impl INode for GloNode {
             engine: None,
             use_accelerometer: true,
             accel_sign: Vector3::ONE,
-            usb_mic: false,
+            mic_source: "builtin".into(),
             underruns: 0,
             underrun_timer: 0.0,
             base,
@@ -89,7 +90,7 @@ impl GloNode {
         self.engine = None;
         let opts = AudioOptions {
             use_mic,
-            usb_mic: self.usb_mic,
+            mic_source: parse_mic_source(&self.mic_source.to_string()),
             buffer_frames: (buffer_frames > 0).then_some(buffer_frames as u32),
             ..Default::default()
         };
@@ -116,16 +117,16 @@ impl GloNode {
         self.engine.as_ref().is_some_and(|e| e.mic_active)
     }
 
-    /// Whether a USB microphone is connected; false when unknown (desktop).
+    /// Connected microphone sources ("builtin", "usb", "headset"); empty when unknown (desktop).
     #[func]
-    fn has_usb_mic(&self) -> bool {
-        glo_core::audio::usb_mic_connected().unwrap_or(false)
+    fn get_mic_sources(&self) -> PackedStringArray {
+        glo_core::audio::mic_sources().unwrap_or_default().into_iter().map(|s| GString::from(mic_source_name(s))).collect()
     }
 
-    /// Whether the current recording device is a USB microphone.
+    /// Source of the current recording device ("builtin", "usb" or "headset").
     #[func]
-    fn is_mic_usb(&self) -> bool {
-        self.engine.as_ref().is_some_and(|e| e.mic_usb)
+    fn get_active_mic_source(&self) -> GString {
+        mic_source_name(self.engine.as_ref().map_or(MicSource::Builtin, |e| e.mic_source)).into()
     }
 
     /// Mic sensitivity trim in dB on top of the firmware's AGC setting.
@@ -236,5 +237,21 @@ impl GloNode {
         let mut v = l.rms.to_vec();
         v.extend_from_slice(&l.bands);
         PackedFloat32Array::from(v.as_slice())
+    }
+}
+
+fn mic_source_name(s: MicSource) -> &'static str {
+    match s {
+        MicSource::Builtin => "builtin",
+        MicSource::Usb => "usb",
+        MicSource::Headset => "headset",
+    }
+}
+
+fn parse_mic_source(s: &str) -> MicSource {
+    match s {
+        "usb" => MicSource::Usb,
+        "headset" => MicSource::Headset,
+        _ => MicSource::Builtin,
     }
 }

@@ -3,7 +3,7 @@ resolver = "2"
 members = ["glo-core", "glo-desktop", "glo-godot"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.2"
 edition = "2021"
 license = "GPL-3.0"
 

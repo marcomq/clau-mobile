@@ -208,7 +208,7 @@ checksum = "f70749695b063ecbf6b62949ccccde2e733ec3ecbbd71d467dca4e5c6c97cca0"
 
 [[package]]
 name = "glo-core"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "cc",
  "cpal",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "glo-desktop"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "glo-core",
  "hound",
@@ -228,7 +228,7 @@ dependencies = [
 
 [[package]]
 name = "glo-godot"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "glo-core",
  "godot",

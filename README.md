@@ -44,10 +44,11 @@ cannot be told apart from Bluetooth headphones and count as headphones.
 
 On Android the app records from the phone's built-in microphone by default, so a headset with its own mic
 (wired or USB) does not take over; if no built-in mic is listed, it falls back to the system default.
-Tapping "mic: built-in" at the top switches to a USB microphone when one is connected (saved in `user://app.cfg`).
-The − / + next to it trim the mic sensitivity in 3 dB steps, saved separately for the built-in and the USB mic.
+Tapping "mic: built-in" at the top cycles through the connected microphones: built-in, USB and headset (wired or
+Bluetooth). The choice is saved in `user://app.cfg`, and the built-in mic is used while the chosen one is disconnected.
+The − / + next to it trim the mic sensitivity in 3 dB steps, saved separately for each of them.
 Playback follows Android's routing (choose the output in Android's media output switcher); a USB microphone's own
-output does not count as headphones. Audio restarts when a USB mic is plugged in or removed. A few vendors'
+output does not count as headphones. Audio restarts when a microphone is plugged in or removed. A few vendors'
 audio drivers may ignore this and still use the headset mic. Without the microphone permission the app runs without input.
 Mic sensitivity works like on the Glo: 6 short presses on U2 raise the AGC max gain by 12 dB (6 dB on the Glo), 6 on U3 lower it
 (default `AGC_MAX_GAIN 32` in `config_glo.txt`, not saved across restarts); the status line shows the new value.
@@ -133,9 +134,18 @@ if `ANDROID_NDK_HOME` is unset, and runs `$GODOT` (default `godot`):
 
 Pushing a tag `v*` (e.g. `v0.1.0`) runs [`.github/workflows/release.yml`](.github/workflows/release.yml): it
 synthesizes the free sample image, builds the signed APK and attaches `clau-<version>.apk`, `LICENSE` and
-`NOTICE.md` to a GitHub release. The tag sets the version name, the run number the version code. Repository
+`NOTICE.md` to a GitHub release. Repository
 secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i release.keystore`), `ANDROID_KEYSTORE_ALIAS`,
 `ANDROID_KEYSTORE_PASSWORD`. Manual runs (workflow_dispatch) only upload the APK as a build artifact.
+
+### Version
+
+The single source of the version is `version` under `[workspace.package]` in [`rust/Cargo.toml`](rust/Cargo.toml).
+Every Android build (`./build.sh android | release | aab`, locally and in CI) writes it into both presets in
+`godot/export_presets.cfg` as version name, with version code major × 10000 + minor × 100 + patch (0.1.2 → 102);
+don't edit the presets by hand. `./build.sh version` prints it. To release: bump the version in `rust/Cargo.toml`,
+commit, tag `v<version>` and push the tag. CI fails if the tag doesn't match; untagged builds are named
+`<version>-<commit>`.
 
 Tested on macOS (desktop) and Android. Linux and Windows are set up but untested:
 
