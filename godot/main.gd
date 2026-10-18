@@ -9,6 +9,9 @@ const ANDROID_BUFFER_FRAMES := 96
 ## Engine-side ring floor (latency) on Android: every start begins at four times this and shrinks to it while audio runs
 ## cleanly; it stays larger for Bluetooth's large bursts or a device that keeps underrunning (slow CPU).
 const ANDROID_RING_FRAMES := 448
+## Desktop: the CoreAudio default callback is 512 frames (11 ms) per stream, plus rings sized after it.
+const DESKTOP_BUFFER_FRAMES := 128
+const DESKTOP_RING_FRAMES := 256
 ## On-screen buttons left to right: − (U3), ▷ (U1), + (U2).
 const ZONE_BUTTONS := [3, 1, 2]
 const ZONE_HINTS := ["hold: quieter", "tap: next channel", "hold: louder"]
@@ -148,7 +151,8 @@ func _start_audio(use_mic: bool) -> void:
 		glo.set_ring_frames(ANDROID_RING_FRAMES)
 		glo.start_audio(use_mic, ANDROID_BUFFER_FRAMES)
 	else:
-		glo.start_audio(use_mic, 0)
+		glo.set_ring_frames(DESKTOP_RING_FRAMES)
+		glo.start_audio(use_mic, DESKTOP_BUFFER_FRAMES)
 
 
 func _restart_audio() -> void:

@@ -101,15 +101,24 @@ fn mic_source_of(desc: &cpal::DeviceDescription) -> Option<MicSource> {
 /// On Android the default input follows routing, so a headset would take over the mic; pin the built-in one,
 /// or the preferred `source` when it is connected.
 #[cfg(target_os = "android")]
-fn input_device(host: &cpal::Host, source: MicSource) -> Option<cpal::Device> {
+fn input_device(host: &cpal::Host, source: MicSource, _rate: u32) -> Option<cpal::Device> {
     let mut devs = android_devices(host, true);
     let find = |s| devs.iter().position(|(_, d)| mic_source_of(d) == Some(s));
     find(source).or_else(|| find(MicSource::Builtin)).map(|i| devs.swap_remove(i).0).or_else(|| host.default_input_device())
 }
 
+/// The default input, unless it cannot record at `rate` (e.g. a Bluetooth headset mic at 16 kHz on macOS); then
+/// the first input that can.
 #[cfg(not(target_os = "android"))]
-fn input_device(host: &cpal::Host, _source: MicSource) -> Option<cpal::Device> {
+fn input_device(host: &cpal::Host, _source: MicSource, rate: u32) -> Option<cpal::Device> {
+    let takes_rate = |d: &cpal::Device| {
+        d.supported_input_configs()
+            .is_ok_and(|mut c| c.any(|r| (r.min_sample_rate()..=r.max_sample_rate()).contains(&rate)))
+    };
     host.default_input_device()
+        .filter(takes_rate)
+        .or_else(|| host.input_devices().ok()?.find(takes_rate))
+        .or_else(|| host.default_input_device())
 }
 
 /// Whether headphones (wired, USB, Bluetooth, hearing aid, line out) are connected. `None` when unknown:
@@ -157,11 +166,25 @@ pub fn mic_sources() -> Option<Vec<MicSource>> {
     None
 }
 
+/// `preferred` when the output device supports it, else the device's default rate (e.g. 44.1 kHz Bluetooth
+/// headphones on macOS); the firmware resamples to whatever rate it renders at.
+fn output_rate(dev: &cpal::Device, preferred: u32) -> u32 {
+    let supported = dev
+        .supported_output_configs()
+        .is_ok_and(|mut c| c.any(|r| (r.min_sample_rate()..=r.max_sample_rate()).contains(&preferred)));
+    if supported {
+        preferred
+    } else {
+        dev.default_output_config().map_or(preferred, |c| c.sample_rate())
+    }
+}
+
 impl AudioEngine {
     pub fn start(opts: AudioOptions) -> Result<Self, String> {
         let host = cpal::default_host();
         let out_dev = host.default_output_device().ok_or("no output device")?;
-        let rate = opts.sample_rate;
+        let rate = output_rate(&out_dev, opts.sample_rate);
+        let opts = AudioOptions { sample_rate: rate, ..opts };
 
         let (mut mic_tx, mut mic_rx) = rtrb::RingBuffer::<f32>::new(MAX_FRAMES * 4);
         let mic_chunk = Arc::new(AtomicUsize::new(0));
@@ -172,7 +195,7 @@ impl AudioEngine {
         let mut mic_name = None;
         let mut mic_source = MicSource::Builtin;
         if opts.use_mic {
-            if let Some(in_dev) = input_device(&host, opts.mic_source) {
+            if let Some(in_dev) = input_device(&host, opts.mic_source, rate) {
                 let in_ch = in_dev.default_input_config().map(|c| c.channels()).unwrap_or(1).clamp(1, 2);
                 let built = in_dev.build_input_stream(
                     config(&opts, in_ch),
