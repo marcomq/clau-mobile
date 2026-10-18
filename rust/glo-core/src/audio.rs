@@ -1,6 +1,6 @@
 //! Duplex audio: cpal output drives `glo_render`; the mic (if permitted) feeds it through a ring.
 
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
@@ -129,6 +129,18 @@ pub fn headphones_connected() -> Option<bool> {
     None
 }
 
+/// Bluetooth output takes data in large bursts: a fixed callback size then runs several callbacks back to back,
+/// faster than the firmware refills its ring.
+#[cfg(target_os = "android")]
+fn bluetooth_output(host: &cpal::Host) -> bool {
+    android_devices(host, false).iter().any(|(_, d)| d.interface_type() == cpal::InterfaceType::Bluetooth)
+}
+
+#[cfg(not(target_os = "android"))]
+fn bluetooth_output(_host: &cpal::Host) -> bool {
+    false
+}
+
 /// Connected microphone sources (Android), in `MicSource` order without duplicates. `None` when unknown.
 #[cfg(target_os = "android")]
 pub fn mic_sources() -> Option<Vec<MicSource>> {
@@ -154,6 +166,8 @@ impl AudioEngine {
         let (mut mic_tx, mut mic_rx) = rtrb::RingBuffer::<f32>::new(MAX_FRAMES * 4);
         let mic_chunk = Arc::new(AtomicUsize::new(0));
         let mic_chunk_in = mic_chunk.clone();
+        let mic_fed = Arc::new(AtomicBool::new(false));
+        let mic_fed_in = mic_fed.clone();
         let mut input = None;
         let mut mic_name = None;
         let mut mic_source = MicSource::Builtin;
@@ -164,6 +178,7 @@ impl AudioEngine {
                     config(&opts, in_ch),
                     move |data: &[f32], _: &cpal::InputCallbackInfo| {
                         mic_chunk_in.fetch_max(data.len() / in_ch as usize * 2, Ordering::Relaxed);
+                        mic_fed_in.store(true, Ordering::Relaxed);
                         for frame in data.chunks(in_ch as usize) {
                             let l = frame[0];
                             let r = *frame.get(1).unwrap_or(&l);
@@ -191,17 +206,24 @@ impl AudioEngine {
         let mic_active = input.is_some();
 
         let out_ch = 2u16;
+        let out_opts = if false /* DEBUG simulate cheap device */ && bluetooth_output(&host) { AudioOptions { buffer_frames: None, ..opts } } else { opts };
         let mut scratch = vec![0.0f32; MAX_FRAMES * 2];
         let mut mic = vec![0.0f32; MAX_FRAMES * 2];
         let mut mic_last = [0.0f32; 2];
         let mut out_max = 0usize;
+        let mut out_run = 0usize;
         let output = out_dev
             .build_output_stream(
-                config(&opts, out_ch),
+                config(&out_opts, out_ch),
                 move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-                    // Keep mic latency bounded: drop what piled up beyond three of the largest callbacks of either
-                    // stream (Bluetooth alternates small and large output callbacks, e.g. 28 and 932 frames).
-                    out_max = out_max.max(data.len());
+                    // Keep mic latency bounded: drop what piled up beyond three of the largest bursts of either stream.
+                    // An output burst is what it takes between two mic callbacks: one large callback (Bluetooth
+                    // alternates e.g. 28 and 932 frames) or several small ones back to back (fixed size, mixer path).
+                    if mic_fed.swap(false, Ordering::Relaxed) {
+                        out_run = 0;
+                    }
+                    out_run += data.len();
+                    out_max = out_max.max(out_run);
                     let keep = out_max.max(mic_chunk.load(Ordering::Relaxed)) * 3;
                     let excess = mic_rx.slots().saturating_sub(keep) & !1;
                     for _ in 0..excess {

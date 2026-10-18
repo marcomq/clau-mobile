@@ -63,6 +63,8 @@ static struct {
     float agc_env, agc_gain, agc_release, agc_attack, agc_decay, agc_max, agc_target;
     float gate, gate_open, gate_close;
     int agc_on;
+    int window_frames, bad_windows, settled, grace, in_skip, ring_resets;
+    unsigned window_underruns;
 } rs;
 
 void glo_port_get_accel(float out[3])
@@ -296,6 +298,12 @@ static void next_engine_frame(const float *in_lr)
         push_hist(rs.out_hist, 0.0f, 0.0f);
         if (!atomic_load_explicit(&glo_powered_off, memory_order_relaxed))
             atomic_fetch_add_explicit(&underruns, 1, memory_order_relaxed);
+        /* The firmware reads one mic frame per frame it writes: a mic frame without output would stay queued as latency. */
+        return;
+    }
+    if (rs.in_skip > 0) {
+        rs.in_skip--;
+        return;
     }
     int16_t l = 0, r = 0;
     if (in_lr) {
@@ -305,6 +313,52 @@ static void next_engine_frame(const float *in_lr)
         r = (int16_t)lrintf(mic_limit(mic[1]) * 32767.0f);
     }
     glo_i2s_in_push(((uint32_t)(uint16_t)l << 16) | (uint16_t)r);
+}
+
+/* The ring starts large and shrinks by a quarter every clean half second, down to its floor and the callback's need.
+ * An underrun while shrinking steps back up and ends the search; later, underruns in three consecutive windows (slow
+ * CPU, large bursts) grow it by a quarter. The first 3 s after a reset do not count: the firmware may still be booting. */
+static void adapt_ring(int frames, int device_rate, int need)
+{
+    rs.window_frames += frames;
+    if (rs.window_frames < device_rate / 2)
+        return;
+    rs.window_frames = 0;
+    unsigned n = atomic_load_explicit(&underruns, memory_order_relaxed);
+    int bad = n != rs.window_underruns;
+    rs.window_underruns = n;
+    int resets = glo_i2s_ring_resets();
+    if (resets != rs.ring_resets || !glo_i2s_ring_primed()) {
+        rs.ring_resets = resets;
+        rs.settled = 0;
+        rs.bad_windows = 0;
+        rs.grace = 6;
+        return;
+    }
+    if (rs.grace > 0) {
+        rs.grace--;
+        return;
+    }
+    int ring = glo_i2s_ring_frames();
+    if (bad && !rs.settled) {
+        rs.settled = 1;
+        glo_i2s_ensure_ring_frames(ring * 4 / 3);
+    } else if (bad) {
+        if (++rs.bad_windows >= 3) {
+            glo_i2s_ensure_ring_frames(ring + (ring / 4 > 64 ? ring / 4 : 64));
+            rs.bad_windows = 0;
+        }
+    } else {
+        rs.bad_windows = 0;
+        int floor = glo_i2s_ring_floor() > need ? glo_i2s_ring_floor() : need;
+        if (!rs.settled && ring > floor) {
+            int next = ring * 3 / 4 > floor ? ring * 3 / 4 : floor;
+            glo_i2s_resize_ring(next);
+            /* The firmware pauses until the ring drains to the new size; the mic frames of that pause would queue up. */
+            rs.in_skip += ring - next;
+        }
+    }
+    printf("glo: DEBUG ring %d settled %d\n", glo_i2s_ring_frames(), rs.settled); /* DEBUG */
 }
 
 void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
@@ -317,7 +371,8 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
     const int engine_rate = atomic_load(&glo_engine_rate);
     const double step = (double)engine_rate / (double)device_rate;
     setup_agc(engine_rate);
-    glo_i2s_ensure_ring_frames(2 * ((int)(frames * step) + 2));
+    const int need = 2 * ((int)(frames * step) + 2);
+    glo_i2s_ensure_ring_frames(need);
     const float gain = codec_gain();
     double sum[2] = { 0, 0 };
     double band_sum[N_BANDS] = { 0 };
@@ -354,6 +409,8 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
             band_sum[b] += (double)y * y;
         }
     }
+
+    adapt_ring(frames, device_rate, need);
 
     const float a = 0.3f;
     for (int c = 0; c < 2; c++) {

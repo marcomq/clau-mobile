@@ -35,6 +35,11 @@ int glo_i2s_out_pop(uint32_t *frame);
 void glo_i2s_in_push(uint32_t frame);
 void glo_i2s_set_ring_frames(int frames);
 void glo_i2s_ensure_ring_frames(int frames);
+int glo_i2s_ring_frames(void);
+int glo_i2s_ring_floor(void);
+int glo_i2s_ring_resets(void);
+void glo_i2s_resize_ring(int frames);
+int glo_i2s_ring_primed(void);
 
 void glo_rtos_reset_clock(void);
 void glo_rtos_spawn_app(void (*entry)(void));

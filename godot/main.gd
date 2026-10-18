@@ -3,6 +3,12 @@ extends Control
 
 const ChannelInfo := preload("res://channel_info.gd")
 const RECORD_AUDIO := "android.permission.RECORD_AUDIO"
+## Fixed AAudio callback size: caps the output buffer at two callbacks; the platform default queued 864 frames (18 ms).
+## Bluetooth output ignores it (see glo-core audio.rs).
+const ANDROID_BUFFER_FRAMES := 96
+## Engine-side ring floor (latency) on Android: every start begins at four times this and shrinks to it while audio runs
+## cleanly; it stays larger for Bluetooth's large bursts or a device that keeps underrunning (slow CPU).
+const ANDROID_RING_FRAMES := 448
 ## On-screen buttons left to right: − (U3), ▷ (U1), + (U2).
 const ZONE_BUTTONS := [3, 1, 2]
 const ZONE_HINTS := ["hold: quieter", "tap: next channel", "hold: louder"]
@@ -110,11 +116,11 @@ func _ready() -> void:
 		_mic_sources = glo.get_mic_sources()
 		get_tree().on_request_permissions_result.connect(_on_permission_result)
 		if OS.request_permission(RECORD_AUDIO):
-			glo.start_audio(true, 0)
+			_start_audio(true)
 		else:
-			glo.start_audio(false, 0)
+			_start_audio(false)
 	else:
-		glo.start_audio(true, 0)
+		_start_audio(true)
 
 
 func _load_samples() -> PackedByteArray:
@@ -126,7 +132,7 @@ func _load_samples() -> PackedByteArray:
 
 func _on_permission_result(permission: String, granted: bool) -> void:
 	if permission == RECORD_AUDIO and granted:
-		glo.start_audio(true, 0)
+		_start_audio(true)
 
 
 func _notification(what: int) -> void:
@@ -137,8 +143,16 @@ func _notification(what: int) -> void:
 		_restart_audio()
 
 
+func _start_audio(use_mic: bool) -> void:
+	if OS.get_name() == "Android":
+		glo.set_ring_frames(ANDROID_RING_FRAMES)
+		glo.start_audio(use_mic, ANDROID_BUFFER_FRAMES)
+	else:
+		glo.start_audio(use_mic, 0)
+
+
 func _restart_audio() -> void:
-	glo.start_audio(OS.get_name() != "Android" or RECORD_AUDIO in OS.get_granted_permissions(), 0)
+	_start_audio(OS.get_name() != "Android" or RECORD_AUDIO in OS.get_granted_permissions())
 
 
 ## Cycles through the connected mics (built-in, USB, headset).
