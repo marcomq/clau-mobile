@@ -85,9 +85,12 @@ fn is_usb_mic_output(out: &cpal::DeviceDescription, inputs: &[(cpal::Device, cpa
         && inputs.iter().any(|(_, i)| i.interface_type() == InterfaceType::Usb && i.name() == out.name())
 }
 
+/// Bluetooth mics are skipped: Android only routes them in call mode (SCO), which also degrades the output.
 fn mic_source_of(desc: &cpal::DeviceDescription) -> Option<MicSource> {
     use cpal::{DeviceType, InterfaceType};
-    if desc.interface_type() == InterfaceType::Usb {
+    if desc.interface_type() == InterfaceType::Bluetooth {
+        None
+    } else if desc.interface_type() == InterfaceType::Usb {
         Some(MicSource::Usb)
     } else if desc.device_type() == DeviceType::Headset {
         Some(MicSource::Headset)
@@ -181,6 +184,11 @@ fn output_rate(dev: &cpal::Device, preferred: u32) -> u32 {
 
 impl AudioEngine {
     pub fn start(opts: AudioOptions) -> Result<Self, String> {
+        // cpal panics when opening a stream without the context.
+        #[cfg(target_os = "android")]
+        if !crate::android::init_context() {
+            return Err("no Android context".into());
+        }
         let host = cpal::default_host();
         let out_dev = host.default_output_device().ok_or("no output device")?;
         let rate = output_rate(&out_dev, opts.sample_rate);
