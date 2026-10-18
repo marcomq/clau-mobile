@@ -8,6 +8,11 @@
 #include <sys/time.h>
 #include <time.h>
 #include "shim_internal.h"
+#ifdef __APPLE__
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+#include <mach/thread_policy.h>
+#endif
 
 atomic_int glo_kill;
 atomic_int glo_powered_off;
@@ -105,6 +110,14 @@ static void app_entry(void *fn)
 {
 #ifdef __ANDROID__
     setpriority(PRIO_PROCESS, 0, -16); /* THREAD_PRIORITY_URGENT_AUDIO: app_main renders every sample */
+#elif defined(__APPLE__)
+    /* Real-time like a CoreAudio thread: an ordinary thread's short sleeps can last 30 ms and drain the ring. */
+    mach_timebase_info_data_t tb;
+    mach_timebase_info(&tb);
+    uint32_t ms = (uint32_t)(1000000.0 * tb.denom / tb.numer);
+    thread_time_constraint_policy_data_t rt = { .period = 2 * ms, .computation = ms, .constraint = 2 * ms, .preemptible = 1 };
+    thread_policy_set(pthread_mach_thread_np(pthread_self()), THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&rt,
+                      THREAD_TIME_CONSTRAINT_POLICY_COUNT);
 #endif
     ((void (*)(void))fn)();
 }
