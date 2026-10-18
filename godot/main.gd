@@ -69,7 +69,9 @@ var _touch_zone := {}  # touch index -> button
 var _zone_down := [0, 0, 0]
 var _led := Color.BLACK
 var _rms := 0.0
-var _bands := PackedFloat32Array()
+var _spectrum := PackedFloat32Array()
+var _wave := PackedFloat32Array()
+var _wave_peak := 0.1
 var _key_tilt := Vector3(0, 0, -1)
 var _headphones := true
 var _headphone_check := 0.0
@@ -97,7 +99,8 @@ var _flipped := false
 
 
 func _ready() -> void:
-	_bands.resize(8)
+	_spectrum.resize(64)
+	_wave.resize(128)
 	buttons.draw.connect(_draw_buttons)
 	$About/Text.text = ABOUT_TEXT + Engine.get_license_text()
 	glo.use_accelerometer = false
@@ -306,6 +309,7 @@ func _draw_buttons() -> void:
 		var radius := r * (1.1 if play else 0.85)
 		var tint := PLAY_COLOR if play else Color(0.55, 0.65, 0.8).lerp(_led, 0.6)
 		var fill := (0.75 if down else 0.35) if play else (0.45 if down else 0.08)
+		buttons.draw_circle(c, radius, Color(0.02, 0.025, 0.04, 0.9))
 		buttons.draw_circle(c, radius, Color(tint, fill))
 		buttons.draw_arc(c, radius, 0.0, TAU, 64, Color(tint, 0.9 if down else 0.5), 3.0, true)
 		_draw_symbol(i, c, radius * 0.38)
@@ -467,16 +471,28 @@ func _key_tilt_input(event: InputEventKey) -> void:
 
 func _process(delta: float) -> void:
 	var levels: PackedFloat32Array = glo.get_levels()
-	var k := 1.0 - exp(-delta * 12.0)
+	var k := 1.0 - exp(-delta * 6.0)
 	_rms = lerpf(_rms, (levels[0] + levels[1]) * 0.5, k)
-	for i in 8:
-		_bands[i] = lerpf(_bands[i], levels[2 + i], k)
+	var analysis: PackedFloat32Array = glo.analyze(64, 128)
+	var rise := 1.0 - exp(-delta * 14.0)
+	var fall := 1.0 - exp(-delta * 2.5)
+	for i in 64:
+		var v := analysis[i]
+		_spectrum[i] = lerpf(_spectrum[i], v, rise if v > _spectrum[i] else fall)
+	var peak := 0.0
+	for i in 128:
+		peak = maxf(peak, absf(analysis[64 + i]))
+	_wave_peak = maxf(lerpf(_wave_peak, peak, fall), 0.05)
+	var glide := 1.0 - exp(-delta * 8.0)
+	for i in 128:
+		_wave[i] = lerpf(_wave[i], analysis[64 + i] / _wave_peak, glide)
 	_led = _led.lerp(glo.get_led(), 1.0 - exp(-delta * 30.0))
 
 	var mat := visual.material as ShaderMaterial
 	mat.set_shader_parameter("led", _led)
 	mat.set_shader_parameter("rms", _rms)
-	mat.set_shader_parameter("bands", _bands)
+	mat.set_shader_parameter("spectrum", _spectrum)
+	mat.set_shader_parameter("wave", _wave)
 	_feed_tilt()
 	buttons.queue_redraw()
 	_headphone_check -= delta

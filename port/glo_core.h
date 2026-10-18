@@ -34,6 +34,7 @@ void glo_set_mic_offset_db(int db); /* lowers the mic AGC max gain further, for 
 void glo_set_mic_trim_db(int db);   /* user trim of the mic AGC max gain (app setting), added on top */
 int glo_get_mic_agc_db(void);      /* the mic AGC max gain in the firmware's dB scale (6x U2 / 6x U3: +-12 dB), -1 while the AGC is off */
 void glo_get_levels(float *rms_l, float *rms_r, float bands[8]);
+int glo_get_scope(float *out, int n); /* the last n (<= 4096) mono output samples, oldest first; returns their rate */
 int glo_get_button_sequence(char *out, int max); /* short presses typed so far, 'a' = U1, 'b' = U2, 'c' = U3; 0 when none */
 int glo_get_pending_command(void); /* decoded commands the running channel has not picked up: 1 = sequence, 2 = U2 tap, 4 = U3 tap */
 float glo_get_volume_db(void);     /* output volume (digital + analog), -1000 when muted */

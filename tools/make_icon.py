@@ -4,8 +4,8 @@
 # ///
 """Renders the app icon from the same formula as godot/glo.gdshader (one frozen frame).
 
-Writes the plain icon plus the Android adaptive-icon layers (foreground with alpha, black background,
-monochrome for themed icons).
+Writes the plain icon, the Android adaptive-icon layers (foreground with alpha, black background,
+monochrome for themed icons) and a macOS icon (rounded tile with margin and shadow, as the Dock expects).
 
     uv run tools/make_icon.py [--out godot/icons] [--led 0.2,0.55,1.0]
 """
@@ -14,7 +14,7 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageFilter
 
 SUPERSAMPLE = 4
 # A calm frame: moderate loudness, spectrum falling towards the highs (band values as glo_get_levels reports them).
@@ -66,6 +66,27 @@ def to_image(col, alpha=False):
     return Image.fromarray((rgba * 255 + 0.5).astype(np.uint8), "RGBA")
 
 
+def macos_icon(led):
+    """Apple's icon grid: an 824 px squircle tile centred on a 1024 px canvas, with a soft drop shadow."""
+    canvas, tile = 1024, 824
+    n = tile * SUPERSAMPLE
+    c = np.abs((np.arange(n) + 0.5) / n * 2.0 - 1.0)
+    x, y = np.meshgrid(c, c)
+    mask = (x**5 + y**5 <= 1.0).astype(float)
+    mask = mask.reshape(tile, SUPERSAMPLE, tile, SUPERSAMPLE).mean(axis=(1, 3))
+    alpha = Image.fromarray((mask * 255 + 0.5).astype(np.uint8), "L")
+
+    off = (canvas - tile) // 2
+    shadow_a = Image.new("L", (canvas, canvas), 0)
+    shadow_a.paste(alpha.point(lambda v: v * 0.45), (off, off + 10))
+    img = Image.new("RGBA", (canvas, canvas), (0, 0, 0, 0))
+    img.putalpha(shadow_a.filter(ImageFilter.GaussianBlur(14)))
+    face = to_image(render(tile, led, zoom=1.35)).convert("RGBA")
+    face.putalpha(alpha)
+    img.alpha_composite(face, (off, off))
+    return img
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, default=Path("godot/icons"))
@@ -82,7 +103,8 @@ def main():
     ring = render(432, np.zeros(3), zoom=1.0).max(axis=2) / 0.14  # led off: only the ring's base colour remains
     mono = np.clip((ring - 0.35) / 0.4, 0.0, 1.0)
     Image.fromarray((np.dstack([np.ones_like(mono), np.ones_like(mono), np.ones_like(mono), mono]) * 255 + 0.5).astype(np.uint8), "RGBA").save(args.out / "icon_monochrome.png")
-    print(f"wrote {args.out}/icon.png, icon_foreground.png, icon_background.png, icon_monochrome.png")
+    macos_icon(led).save(args.out / "icon_macos.icns")
+    print(f"wrote {args.out}/icon.png, icon_foreground.png, icon_background.png, icon_monochrome.png, icon_macos.icns")
 
 
 if __name__ == "__main__":

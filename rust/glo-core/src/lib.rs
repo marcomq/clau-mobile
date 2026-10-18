@@ -7,6 +7,7 @@ pub mod audio;
 pub mod ffi;
 #[cfg(target_os = "android")]
 pub mod logcat;
+pub mod spectrum;
 
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};

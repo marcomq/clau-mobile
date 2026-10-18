@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use glo_core::audio::{AudioEngine, AudioOptions, MicSource};
+use glo_core::spectrum::Analyzer;
 use godot::classes::{INode, Input, Node};
 use godot::prelude::*;
 
@@ -29,6 +30,7 @@ pub struct GloNode {
     mic_source: GString,
     underruns: u32,
     underrun_timer: f64,
+    analyzer: Analyzer,
     base: Base<Node>,
 }
 
@@ -42,6 +44,7 @@ impl INode for GloNode {
             mic_source: "builtin".into(),
             underruns: 0,
             underrun_timer: 0.0,
+            analyzer: Analyzer::default(),
             base,
         }
     }
@@ -236,6 +239,15 @@ impl GloNode {
         let l = glo_core::levels();
         let mut v = l.rms.to_vec();
         v.extend_from_slice(&l.bands);
+        PackedFloat32Array::from(v.as_slice())
+    }
+
+    /// [spectrum (`bins` levels 0..1, 40 Hz .. 16 kHz, log-spaced), wave (`points` samples -1..1, about 10 ms)].
+    #[func]
+    fn analyze(&mut self, bins: u32, points: u32) -> PackedFloat32Array {
+        let mut v = vec![0.0; (bins + points) as usize];
+        let (spectrum, wave) = v.split_at_mut(bins as usize);
+        self.analyzer.analyze(spectrum, wave);
         PackedFloat32Array::from(v.as_slice())
     }
 }

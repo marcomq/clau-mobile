@@ -45,6 +45,10 @@ static _Atomic float master_gain = 8.0f;
 
 static _Atomic float level_rms[2];
 static _Atomic float level_bands[N_BANDS];
+#define SCOPE_LEN 4096
+static float scope_buf[SCOPE_LEN];
+static atomic_uint scope_pos;
+static atomic_int scope_rate;
 static atomic_uint underruns;
 static atomic_int mic_agc_db = -1;
 static atomic_int mic_offset_db;
@@ -376,6 +380,7 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
     const float gain = codec_gain();
     double sum[2] = { 0, 0 };
     double band_sum[N_BANDS] = { 0 };
+    const unsigned scope_pos_w = atomic_load_explicit(&scope_pos, memory_order_relaxed);
 
     for (int i = 0; i < frames; i++) {
         rs.pos += step;
@@ -408,7 +413,10 @@ void glo_render(float *out_lr, const float *in_lr, int frames, int device_rate)
             z[1] = -k[0] * mono - k[2] * y;
             band_sum[b] += (double)y * y;
         }
+        scope_buf[(scope_pos_w + i) % SCOPE_LEN] = mono;
     }
+    atomic_store_explicit(&scope_pos, scope_pos_w + (unsigned)frames, memory_order_release);
+    atomic_store_explicit(&scope_rate, device_rate, memory_order_relaxed);
 
     adapt_ring(frames, device_rate, need);
 
@@ -496,4 +504,15 @@ void glo_get_levels(float *rms_l, float *rms_r, float bands[8])
     *rms_r = atomic_load_explicit(&level_rms[1], memory_order_relaxed);
     for (int b = 0; b < N_BANDS; b++)
         bands[b] = atomic_load_explicit(&level_bands[b], memory_order_relaxed);
+}
+
+/* Read without locking while glo_render writes: only for display, the oldest samples may already be overwritten. */
+int glo_get_scope(float *out, int n)
+{
+    if (n > SCOPE_LEN)
+        n = SCOPE_LEN;
+    unsigned end = atomic_load_explicit(&scope_pos, memory_order_acquire);
+    for (int i = 0; i < n; i++)
+        out[i] = ((volatile float *)scope_buf)[(end - (unsigned)n + (unsigned)i) % SCOPE_LEN];
+    return atomic_load_explicit(&scope_rate, memory_order_relaxed);
 }

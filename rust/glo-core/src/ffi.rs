@@ -21,6 +21,7 @@ extern "C" {
     pub fn glo_set_mic_offset_db(db: c_int);
     pub fn glo_set_mic_trim_db(db: c_int);
     pub fn glo_get_levels(rms_l: *mut c_float, rms_r: *mut c_float, bands: *mut c_float);
+    pub fn glo_get_scope(out: *mut c_float, n: c_int) -> c_int;
     pub fn glo_get_button_sequence(out: *mut c_char, max: c_int) -> c_int;
     pub fn glo_get_pending_command() -> c_int;
     pub fn glo_get_volume_db() -> c_float;
