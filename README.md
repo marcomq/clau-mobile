@@ -2,7 +2,8 @@
 
 Flono runs the [Glo "Polyphonic Whale"](https://github.com/h3o/Glo_v1) ESP32 firmware (v1.0, Whale board)
 unmodified on Android (and macOS) inside a Godot app. The repository is flono, the internal names (`glo-core`,
-`GloNode`, `glo_*`) keep the glo prefix, and the Android package id is `io.github.marcomq.flono`.
+`GloNode`, `glo_*`) keep the glo prefix, and the Android package id is `com.marcomq.flono`
+(older APKs used `io.github.marcomq.flono`, a separate app: reinstall to switch).
 
 **How to play it: see the [manual](MANUAL.md)** (controls, tilt, button commands, settings, all channels,
 differences from the Glo). Privacy: [PRIVACY.md](PRIVACY.md) (no data is collected).

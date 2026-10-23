@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Flono (Android package `io.github.marcomq.flono`), by Marco Mengelkoch. Effective 2026-10-17.
+Flono (Android package `com.marcomq.flono`, older APKs `io.github.marcomq.flono`), by Marco Mengelkoch. Effective 2026-10-17.
 
 Flono does not collect, store or share any personal data.
 
