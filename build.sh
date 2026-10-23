@@ -47,10 +47,12 @@ build_android() {
     cp rust/target/aarch64-linux-android/release/libglo_godot.so godot/bin/android/
     mkdir -p build
     (cd godot && "$GODOT" --headless --import)
+    # Only valid together with an export; on its own Godot runs the project instead.
+    tpl=
     if [ "${PRESET:-Android}" = "Android AAB" ] && [ ! -e godot/android/.build_version ]; then
-        (cd godot && "$GODOT" --headless --install-android-build-template)
+        tpl=--install-android-build-template
     fi
-    (cd godot && "$GODOT" --headless "--${EXPORT:-export-debug}" "${PRESET:-Android}")
+    (cd godot && "$GODOT" --headless ${tpl:+"$tpl"} "--${EXPORT:-export-debug}" "${PRESET:-Android}")
 }
 
 case "${1:-}" in
