@@ -32,6 +32,8 @@ extern void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db);
  * and echo feedback adds on top. Peaks the AGC attack lets through are bent softly under this ceiling. */
 #define MIC_KNEE 0.3f
 #define MIC_CEILING 0.45f
+#define UNDERRUN_DECAY 0.95f /* per engine frame: about 2 ms to silence */
+#define UNDERRUN_FADE_IN (1.0f / 64.0f)
 
 char glo_data_dir[1024];
 _Atomic float glo_accel[3] = { 0.0f, 0.0f, -1.0f };
@@ -69,12 +71,25 @@ static struct {
     int agc_on;
     int window_frames, bad_windows, settled, grace, in_skip, ring_resets;
     unsigned window_underruns;
-} rs;
+    float hold[2], fade; /* underrun concealment: the last frame decaying, and how far the output is faded back in */
+} rs = { .fade = 1.0f };
 
+/* The host updates the tilt once per video frame, the KX123 every few ms: the firmware maps it straight to mix
+ * levels and filters, so the steps would click. Glides towards it instead (only the accelerometer task calls this). */
+#define ACCEL_GLIDE_S 0.025
 void glo_port_get_accel(float out[3])
 {
-    for (int i = 0; i < 3; i++)
-        out[i] = atomic_load_explicit(&glo_accel[i], memory_order_relaxed);
+    static float cur[3];
+    static double last;
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    double now = (double)ts.tv_sec + 1e-9 * (double)ts.tv_nsec;
+    float k = last > 0.0 ? 1.0f - (float)exp(-(now - last) / ACCEL_GLIDE_S) : 1.0f;
+    last = now;
+    for (int i = 0; i < 3; i++) {
+        cur[i] += k * (atomic_load_explicit(&glo_accel[i], memory_order_relaxed) - cur[i]);
+        out[i] = cur[i];
+    }
 }
 
 void glo_set_config(const char *text, size_t len)
@@ -297,9 +312,21 @@ static void next_engine_frame(const float *in_lr)
 {
     uint32_t f;
     if (glo_i2s_out_pop(&f)) {
-        push_hist(rs.out_hist, (float)(int16_t)(f >> 16) / 32768.0f, (float)(int16_t)(f & 0xffff) / 32768.0f);
+        float lr[2] = { (float)(int16_t)(f >> 16) / 32768.0f, (float)(int16_t)(f & 0xffff) / 32768.0f };
+        if (rs.fade < 1.0f) {
+            rs.fade = fminf(1.0f, rs.fade + UNDERRUN_FADE_IN);
+            for (int c = 0; c < 2; c++)
+                lr[c] = rs.fade * lr[c] + (1.0f - rs.fade) * (rs.hold[c] *= UNDERRUN_DECAY);
+        }
+        rs.hold[0] = lr[0];
+        rs.hold[1] = lr[1];
+        push_hist(rs.out_hist, lr[0], lr[1]);
     } else {
-        push_hist(rs.out_hist, 0.0f, 0.0f);
+        /* A late firmware would drop the output to zero, a click: let the last frame die away, fade back in later. */
+        rs.fade = 0.0f;
+        rs.hold[0] *= UNDERRUN_DECAY;
+        rs.hold[1] *= UNDERRUN_DECAY;
+        push_hist(rs.out_hist, rs.hold[0], rs.hold[1]);
         if (!atomic_load_explicit(&glo_powered_off, memory_order_relaxed))
             atomic_fetch_add_explicit(&underruns, 1, memory_order_relaxed);
         /* The firmware reads one mic frame per frame it writes: a mic frame without output would stay queued as latency. */

@@ -294,9 +294,17 @@ func _move_stick(pos: Vector2) -> void:
 	_stick = ((pos - _stick_center()) / _stick_radius()).limit_length(1.0)
 
 
-## Each full-height third of the screen is a touch field; the circles show which one is held.
+## The nearest button whose circle (with some slack around it) contains pos, or -1.
 func _button_at(pos: Vector2) -> int:
-	return clampi(int(pos.x / size.x * 3.0), 0, 2)
+	var best := -1
+	var best_d := INF
+	for i in 3:
+		var reach := _button_radius() * (1.1 if i == 1 else 0.85) * 1.6
+		var d := pos.distance_to(_button_center(i))
+		if d < reach and d < best_d:
+			best = i
+			best_d = d
+	return best
 
 
 func _draw_buttons() -> void:
@@ -426,6 +434,8 @@ func _input(event: InputEvent) -> void:
 				_move_stick(event.position)
 				return
 			var zone := _button_at(event.position)
+			if zone < 0:
+				return
 			_touch_zone[event.index] = zone
 			_set_zone(zone, 1)
 		elif event.index == _lock_touch:

@@ -99,12 +99,14 @@ int i2s_push_sample(i2s_port_t port, const void *sample, TickType_t ticks)
     return 4;
 }
 
-/* Mic input piled up beyond the output ring (e.g. while a channel did not read it) is stale: skip to the newest. */
+/* The mic backlog mirrors the output ring: it fills up to the ring's size while the firmware lags, plus the block
+ * a channel reads at once (e.g. 100 frames). Only twice that is stale (a channel did not read it): skip to the newest.
+ * Every skip is a jump in the mic signal, followed by silence until the firmware catches up. */
 static int in_get(uint32_t *v)
 {
     unsigned limit = (unsigned)atomic_load_explicit(&ring_limit, memory_order_relaxed);
-    if (ring_count(&in_ring) > limit)
-        atomic_store_explicit(&in_ring.tail, atomic_load_explicit(&in_ring.head, memory_order_acquire) - limit / 2,
+    if (ring_count(&in_ring) > 2 * limit)
+        atomic_store_explicit(&in_ring.tail, atomic_load_explicit(&in_ring.head, memory_order_acquire) - limit,
                               memory_order_release);
     return ring_get(&in_ring, v);
 }
