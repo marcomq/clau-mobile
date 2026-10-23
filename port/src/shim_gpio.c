@@ -1,4 +1,4 @@
-/* GPIO: host touch zones as Whale buttons, RGB LED and power-hold pins captured. Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* GPIO: host touch zones as Whale buttons, RGB LED and power-hold pins captured. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include "shim_internal.h"
 
 atomic_int glo_buttons[4];

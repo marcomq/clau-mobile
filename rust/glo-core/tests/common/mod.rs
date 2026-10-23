@@ -43,7 +43,7 @@ pub struct Glo {
 impl Glo {
     /// Boots with a fresh data dir named after the test binary and optional samples from `GLO_TEST_SAMPLES`.
     pub fn boot(name: &str) -> Glo {
-        let dir = std::env::temp_dir().join(format!("clau-test-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("flono-test-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let samples = std::env::var_os("GLO_TEST_SAMPLES").map(|p| std::fs::read(PathBuf::from(p)).expect("GLO_TEST_SAMPLES"));
         glo_core::start(&dir, samples.as_deref()).expect("boot");

@@ -1,4 +1,4 @@
-/* FreeRTOS tasks on pthreads, cooperative exit for esp_restart()/power-off. Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* FreeRTOS tasks on pthreads, cooperative exit for esp_restart()/power-off. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include <errno.h>
 #include <pthread.h>
 #include <sched.h>

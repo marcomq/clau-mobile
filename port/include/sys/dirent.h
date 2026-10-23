@@ -1,6 +1,6 @@
 /*
  * sys/dirent.h - the firmware's sdcard.h includes it; bionic (Android) only has <dirent.h>.
- * Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
+ * Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
  */
 #pragma once
 

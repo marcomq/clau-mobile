@@ -58,7 +58,7 @@ case "${1:-}" in
     android) build_android ;;
     release) EXPORT=export-release build_android ;;
     aab) EXPORT=export-release PRESET="Android AAB" build_android ;;
-    install) build_android && adb install -r build/clau.apk ;;
+    install) build_android && adb install -r build/flono.apk ;;
     log) adb logcat -s glo ;;
     version) version ;;
     *) echo "usage: $0 desktop | android | release | aab | install | log | version" >&2; exit 1 ;;

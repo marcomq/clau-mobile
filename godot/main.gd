@@ -1,5 +1,5 @@
 extends Control
-## Clau shell: three on-screen buttons act as the Whale buttons, the shader shows LED + sound.
+## Flono shell: three on-screen buttons act as the Whale buttons, the shader shows LED + sound.
 
 const ChannelInfo := preload("res://channel_info.gd")
 const RECORD_AUDIO := "android.permission.RECORD_AUDIO"
@@ -36,13 +36,13 @@ const LOCK_HOLD := 3.0
 const SETTINGS_PATH := "user://app.cfg"
 const SAMPLES_PATHS := ["res://data/samples.bin", "user://samples.bin"]
 ## GPL-3.0 section 5(d): interactive programs show the Appropriate Legal Notices.
-const ABOUT_TEXT := """Clau — the Glo "Polyphonic Whale" firmware v1.0 (gechologic / phonicbloom) on a phone.
+const ABOUT_TEXT := """Flono — the Glo "Polyphonic Whale" firmware v1.0 (gechologic / phonicbloom) on a phone.
 
-Clau is an independent project. It is not affiliated with, endorsed or supported by Phonicbloom, gechologic or the Glo project, and claims no rights to their names or brands. "Glo" names the original instrument whose open-source firmware Clau runs.
+Flono is an independent project. It is not affiliated with, endorsed or supported by Phonicbloom, gechologic or the Glo project, and claims no rights to their names or brands. "Glo" names the original instrument whose open-source firmware Flono runs.
 
 Copyright (C) 2026 Marco Mengelkoch. This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License version 3. It comes with ABSOLUTELY NO WARRANTY. License: https://www.gnu.org/licenses/gpl-3.0.html
-Source code: https://github.com/marcomq/clau-mobile
-Privacy: Clau collects no data. Microphone audio is processed on the device only and never recorded or sent. Policy: https://github.com/marcomq/clau-mobile/blob/main/PRIVACY.md
+Source code: https://github.com/marcomq/flono-mobile
+Privacy: Flono collects no data. Microphone audio is processed on the device only and never recorded or sent. Policy: https://github.com/marcomq/flono-mobile/blob/main/PRIVACY.md
 
 Includes: Glo firmware (GPL-3.0), Mutable Instruments Clouds and stmlib by Olivier Gillet (MIT), Dekrispator by Xavier Halgand with code by Sean Bolton and Julian Schmidt (GPL), godot-rust (MPL-2.0), cpal (Apache-2.0) and other Rust crates (MIT / Apache-2.0). Full list: NOTICE.md in the source.
 
@@ -536,7 +536,7 @@ func _process(delta: float) -> void:
 	glo.set_mic_trim_db(trim)
 	mic_source.text = "mic: " + {"builtin": "built-in", "usb": "USB", "headset": "headset"}[_mic_key()] + ("" if trim == 0 else "  %+d dB" % trim)
 	if not _headphones:
-		status.text = "no headphones connected: Clau is meant to be played with headphones\n" + status.text
+		status.text = "no headphones connected: Flono is meant to be played with headphones\n" + status.text
 	status.modulate.a = 0.45 if _headphones else 0.9
 
 

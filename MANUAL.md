@@ -1,13 +1,13 @@
-# Clau manual
+# Flono manual
 
-Clau runs the original firmware of Glo, "the Polyphonic Whale" (v1.0.118), on your phone. The phone's screen
+Flono runs the original firmware of Glo, "the Polyphonic Whale" (v1.0.118), on your phone. The phone's screen
 replaces Glo's three buttons, the phone's tilt replaces Glo's accelerometer, and its microphone replaces Glo's
-microphones. Everything you hear is made by the Glo firmware; Clau only fixes a few memory bugs in it and adds the
+microphones. Everything you hear is made by the Glo firmware; Flono only fixes a few memory bugs in it and adds the
 Infinite looper to the channel list. This manual follows the official
 [Glo owner's manual and extended manual v1.00](https://phonicbloom.com/glo/manual/) and adds what is different in
 v1.0.118 and on a phone.
 
-Clau is an independent project, not affiliated with or endorsed by Phonicbloom, gechologic or the Glo project
+Flono is an independent project, not affiliated with or endorsed by Phonicbloom, gechologic or the Glo project
 (see [Disclaimer](#disclaimer)).
 
 - [Before you start](#before-you-start)
@@ -23,10 +23,10 @@ Clau is an independent project, not affiliated with or endorsed by Phonicbloom, 
 
 ## Before you start
 
-- **Use headphones.** Clau listens to the microphone and plays back what it hears, transformed. A loudspeaker
+- **Use headphones.** Flono listens to the microphone and plays back what it hears, transformed. A loudspeaker
   feeds back into the microphone, and binaural beats only work with one ear per channel. The status line warns
   while no headphones are connected.
-- **Allow the microphone** when Android asks. Without it, Clau still runs but cannot react to your voice.
+- **Allow the microphone** when Android asks. Without it, Flono still runs but cannot react to your voice.
 - **Sound to play with:** sing, hum, whistle, clap, tap or scratch the phone near its microphone. Most channels
   turn whatever they hear into chords.
 - **Background samples:** most channels play a background (sea, forest, creek, drums, voice). They come from a
@@ -54,7 +54,7 @@ Clau is an independent project, not affiliated with or endorsed by Phonicbloom, 
 | Ring in the middle | Joystick: drag inside it to tilt the virtual Glo, on top of the phone's own tilt. Half-way to the edge tilts by 90°, the edge turns it upside down. Let go to return. |
 | Visuals | Colour = Glo's LED (it signals modes, see each channel), shape = the sound. |
 | **◎** (top left) | Calibrate: your current way of holding the phone becomes "Glo lying flat". Also done at start. |
-| **Lock** (next to ◎) | Hold 10 s to unlock all 25 channels; hold 3 s to lock the extra ones again. A ring shows the progress, the status line counts down. Clau restarts afterwards. Open and orange = unlocked. |
+| **Lock** (next to ◎) | Hold 10 s to unlock all 25 channels; hold 3 s to lock the extra ones again. A ring shows the progress, the status line counts down. Flono restarts afterwards. Open and orange = unlocked. |
 | **?** | What the current channel does and how to control it. Tap anywhere to close. |
 | **ⓘ** | About, licenses and the disclaimer. |
 | `mic: built-in` / `mic: USB` (Android) | Tap to switch to a USB microphone when one is connected. **−** / **+** next to it trim the mic sensitivity in 3 dB steps. |
@@ -71,13 +71,13 @@ On a computer: keys `1` = ▷, `2` = +, `3` = −, arrow keys tilt, the mouse dr
 | Channel options | Hold **▷** for 1 s (the printed manual says 2 s; the firmware reacts after 1 s). What it does depends on the channel. |
 | Move a channel to the front | While the channel plays, hold **▷** and **+** together for 2 s. A melodic beep confirms; next time it is the first channel. Repeat with other channels to build your own order. |
 | Calibrate tilt | Tap **◎** while holding the phone the way you want to play it. |
-| Power on again | Hold **▷** (only needed after Clau switched itself off, see [Differences](#differences-from-the-glo)). |
+| Power on again | Hold **▷** (only needed after Flono switched itself off, see [Differences](#differences-from-the-glo)). |
 
 The 12 main channels are available right away; 13 more need to be [unlocked](#unlock-all-channels).
 
 ## Tilt
 
-Glo is played by tilting it. In Clau you can tilt the phone or drag the ring joystick; both add up.
+Glo is played by tilting it. In Flono you can tilt the phone or drag the ring joystick; both add up.
 "Lying flat" is however you held the phone at start or when you last tapped **◎**.
 
 In the four nature channels and their variants:
@@ -108,7 +108,7 @@ takes it but does nothing, "no effect in this channel" or "not a command". Taps 
 | **+ − + − + −** | Key beeps on / off | yes |
 | **+** ×5 | Output volume +6 dB (up to 0 dB) | yes |
 | **−** ×5 | Output volume −6 dB (down to −50 dB) | yes |
-| **+** ×6 | Microphone gain limit (AGC) higher. Clau: +12 dB per step (Glo: 6 dB), shown in the status line. Careful, feedback. | no |
+| **+** ×6 | Microphone gain limit (AGC) higher. Flono: +12 dB per step (Glo: 6 dB), shown in the status line. Careful, feedback. | no |
 | **−** ×6 | Microphone gain limit lower | no |
 | **▷ + + + − − − ▷** | Factory reset: forgets volumes, tuning, tempo, channel order and unlocking; then restarts. Do it shortly after start. | |
 | **− + − + − + − + ▷** | Unlock all channels (see below) | yes |
@@ -116,7 +116,7 @@ takes it but does nothing, "no effect in this channel" or "not a command". Taps 
 ### Unlock all channels
 
 Hold the lock next to **◎** for 10 seconds, or key in the Glo's own sequence **− + − + − + − + ▷** (four times
-minus-plus, then play; a voice message confirms). Clau restarts with all 25 channels and remembers it. To hide
+minus-plus, then play; a voice message confirms). Flono restarts with all 25 channels and remembers it. To hide
 the extra channels again, hold the lock for 3 seconds; the factory reset also locks them. Locking or unlocking
 resets the channel order.
 
@@ -145,7 +145,7 @@ While an option is selected, holding **+** and **−** for 1 s resets it to its 
 | D. Fixed effects | arpeggio level 25 %, 50 %, 75 %, 100 %, off | next fixed echo length, or echo off |
 
 Option D replaces tilt control of echo and arpeggio, so you don't need to hold the phone at an angle.
-**Clau:** the equalizer (A) has no audible effect, because the Glo's audio chip is not emulated.
+**Flono:** the equalizer (A) has no audible effect, because the Glo's audio chip is not emulated.
 
 ## Binaural beats
 
@@ -165,7 +165,7 @@ again to move to the next program; tap **▷** to stop.
 
 The official manual recommends 15–30 minutes in a relaxed position with closed eyes, and no more than 30 minutes
 the first time. Lying the Glo on its side (headphone socket up) maximises the arpeggio and the binaural effect;
-in Clau that is tilting fully left.
+in Flono that is tilting fully left.
 
 ## Channels
 
@@ -201,7 +201,7 @@ Default order. The status line and the **?** overlay show the channel name; afte
    - Upside down erases the delay faster; on its left side recording stops and the loop plays forever.
 8. **Drum kit**: three drums and a cymbal. Drum in the air in four directions (left, right, away, toward you;
    two at once works too): a drum sounds when the phone tilts more than about 20° that way, and again only
-   after it came back to the middle. The Glo is held upright for this; in Clau the way you hold the phone (◎)
+   after it came back to the middle. The Glo is held upright for this; in Flono the way you hold the phone (◎)
    already counts as upright. LED: blue kick, red snare, green cymbal, pink hi-hat.
    Hold **▷**: echo on / off, cycling through timings.
 9. **Space**: like Fire, without reverb; tilt away from you for louder noise. Binaural: beta.
@@ -209,7 +209,7 @@ Default order. The status line and the **?** overlay show the channel name; afte
     **+** / **−** next / previous patch, **+ +** / **− −** raise / lower the hard limiter, hold **▷** freeze
     on / off (LED blue = frozen, cyan = live); while frozen, a tap on **▷** unfreezes instead of changing the
     channel. Tap faster than elsewhere: a sequence ends after half a second. Too much feedback or reverb can run away: lower the volume first.
-    (**+ + +** / **− − −** enter / leave a parameter editing mode that reports over the Glo's USB serial port; not useful in Clau.)
+    (**+ + +** / **− − −** enter / leave a parameter editing mode that reports over the Glo's USB serial port; not useful in Flono.)
 11. **Dekrispator**: Xavier Halgand's synth with an internal sequencer; your sounds mix in before its effects.
     **+** / **−** next / previous patch, **+ +** next sequence (then random ones), **− −** last random patch,
     **+ + +** random patch, **− − −** random effects (both saved). Hold **▷** cycles echo / envelope / filters
@@ -239,9 +239,9 @@ Channels 13 and 17–24 work like the nature channels (tilt, commands, binaural 
 
 ## Differences from the Glo
 
-Clau runs the firmware with only bug fixes, but a phone is not a Glo:
+Flono runs the firmware with only bug fixes, but a phone is not a Glo:
 
-| On the Glo | In Clau |
+| On the Glo | In Flono |
 |---|---|
 | **▷** and **−** together switch it off | Not available: on the Glo this is done by the power circuit, not the firmware. Close the app instead. |
 | Switches itself off after 1 hour on the same channel (`AUTO_POWER_OFF_TIMEOUT`) | Same: the sound fades out and the status line shows "off". Hold **▷** to start again. |
@@ -261,14 +261,14 @@ Clau runs the firmware with only bug fixes, but a phone is not a Glo:
   installed; in Song of Wind and Ice the mic is not used anyway.
 - **Feedback or howling:** use headphones; lower the mic gain limit (6× **−**) or the mic sensitivity (**−** next
   to `mic:` at the top).
-- **Doesn't react to my voice:** grant the microphone permission (Android settings → Apps → Clau → Permissions),
+- **Doesn't react to my voice:** grant the microphone permission (Android settings → Apps → Flono → Permissions),
   check `mic:` at the top, raise the mic gain limit (6× **+**).
 - **Tilt feels wrong:** hold the phone the way you want to play it and tap **◎**.
 - **Something is stuck:** factory reset with **▷ + + + − − − ▷** right after start, or close and reopen the app.
 
 ## Disclaimer
 
-Clau is an independent, unofficial project. It is not affiliated with, endorsed, sponsored or supported by
+Flono is an independent, unofficial project. It is not affiliated with, endorsed, sponsored or supported by
 Phonicbloom, gechologic or the Glo project, and it claims no trademark, brand or other rights to their names,
 products or artwork. "Glo" and "Glo the Polyphonic Whale" are used only to identify the original instrument
-whose openly published firmware Clau runs. For the real instrument, visit [phonicbloom.com](https://phonicbloom.com/).
+whose openly published firmware Flono runs. For the real instrument, visit [phonicbloom.com](https://phonicbloom.com/).

@@ -82,18 +82,18 @@ jobs:
           GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           ./build.sh release
-          mv build/clau.apk "build/clau-${{ steps.version.outputs.name }}.apk"
+          mv build/flono.apk "build/flono-${{ steps.version.outputs.name }}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: clau-${{ steps.version.outputs.name }}
-          path: build/clau-*.apk
+          name: flono-${{ steps.version.outputs.name }}
+          path: build/flono-*.apk
 
       - name: GitHub release
         if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build/clau-*.apk
+            build/flono-*.apk
             LICENSE
             NOTICE.md

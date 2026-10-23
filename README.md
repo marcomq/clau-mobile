@@ -1,15 +1,15 @@
-# Clau
+# Flono
 
-Clau runs the [Glo "Polyphonic Whale"](https://github.com/h3o/Glo_v1) ESP32 firmware (v1.0, Whale board)
-unmodified on Android (and macOS) inside a Godot app. The repository is clau-mobile, the internal names (`glo-core`,
-`GloNode`, `glo_*`) keep the glo prefix, and the Android package id is `io.github.marcomq.clau`.
+Flono runs the [Glo "Polyphonic Whale"](https://github.com/h3o/Glo_v1) ESP32 firmware (v1.0, Whale board)
+unmodified on Android (and macOS) inside a Godot app. The repository is flono-mobile, the internal names (`glo-core`,
+`GloNode`, `glo_*`) keep the glo prefix, and the Android package id is `io.github.marcomq.flono`.
 
 **How to play it: see the [manual](MANUAL.md)** (controls, tilt, button commands, settings, all channels,
 differences from the Glo). Privacy: [PRIVACY.md](PRIVACY.md) (no data is collected).
 
-> **Disclaimer:** Clau is an independent, unofficial project. It is not affiliated with, endorsed or supported by
+> **Disclaimer:** Flono is an independent, unofficial project. It is not affiliated with, endorsed or supported by
 > Phonicbloom, gechologic or the Glo project, and claims no trademark, brand or other rights to their names or
-> products. "Glo" only names the original instrument whose open-source firmware Clau runs.
+> products. "Glo" only names the original instrument whose open-source firmware Flono runs.
 
 ```
 firmware/        Glo_v1 submodule (h3o/Glo_v1, v1.0 Whale source, commit aad6c17), compiled as-is
@@ -122,7 +122,7 @@ if `ANDROID_NDK_HOME` is unset, and runs `$GODOT` (default `godot`):
 
 ```sh
 ./build.sh desktop    # Godot extension for the host OS → godot/bin/<macos|linux|windows>/
-./build.sh android    # Android extension + APK → godot/bin/android/, build/clau.apk
+./build.sh android    # Android extension + APK → godot/bin/android/, build/flono.apk
 ./build.sh install    # android, then adb install
 ./build.sh log        # adb logcat -s glo
 ```
@@ -133,7 +133,7 @@ if `ANDROID_NDK_HOME` is unset, and runs `$GODOT` (default `godot`):
 ### Release (GitHub Actions)
 
 Pushing a tag `v*` (e.g. `v0.1.0`) runs [`.github/workflows/release.yml`](.github/workflows/release.yml): it
-synthesizes the free sample image, builds the signed APK and attaches `clau-<version>.apk`, `LICENSE` and
+synthesizes the free sample image, builds the signed APK and attaches `flono-<version>.apk`, `LICENSE` and
 `NOTICE.md` to a GitHub release. Repository
 secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -i release.keystore`), `ANDROID_KEYSTORE_ALIAS`,
 `ANDROID_KEYSTORE_PASSWORD`. Manual runs (workflow_dispatch) only upload the APK as a build artifact.
@@ -171,11 +171,11 @@ export ANDROID_NDK_HOME=/opt/homebrew/share/android-commandlinetools/ndk/29.0.14
 cargo ndk -t arm64-v8a --platform 26 build --release -p glo-godot
 cp target/aarch64-linux-android/release/libglo_godot.so ../godot/bin/android/
 cd ../godot && godot --headless --import && godot --headless --export-debug Android
-adb install -r ../build/clau.apk
+adb install -r ../build/flono.apk
 ```
 
 `adb install` needs USB debugging enabled on the phone (Settings → About phone → tap Build number 7×, then
-Developer options → USB debugging). Alternatively copy `build/clau.apk` to the phone and open it there
+Developer options → USB debugging). Alternatively copy `build/flono.apk` to the phone and open it there
 (allow installing unknown apps).
 
 The first build of `godot-core` (generated Godot bindings) takes several minutes per target; later builds are incremental.

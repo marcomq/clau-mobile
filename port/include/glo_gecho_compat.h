@@ -1,6 +1,6 @@
 /*
  * glo_gecho_compat.h - Gecho-only names that v1.0.118 uses unguarded in the Whale build.
- * Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
+ * Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
  * LEDs, IR sensors, SD card and the Gecho menu do not exist on the Whale: macros are no-ops, functions are stubs.
  */
 #pragma once

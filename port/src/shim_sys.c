@@ -1,4 +1,4 @@
-/* System, I2C (always ACKs, reads zeros), UART, emulated flash, absent SD card. Part of clau-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* System, I2C (always ACKs, reads zeros), UART, emulated flash, absent SD card. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include <stdlib.h>
 #include "shim_internal.h"
 
