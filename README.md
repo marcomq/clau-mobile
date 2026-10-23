@@ -130,6 +130,24 @@ if `ANDROID_NDK_HOME` is unset, and runs `$GODOT` (default `godot`):
 `./build.sh release` exports a release APK signed with the keystore in `GODOT_ANDROID_KEYSTORE_RELEASE_PATH`
 (`_USER` = alias, `_PASSWORD`).
 
+### Play Store (AAB)
+
+The AAB is built locally only (CI builds the APK). Put the free sample image in place first, since `godot/data/`
+is packed as is (back up the official image if you use it, e.g. outside the repo):
+
+```sh
+uv run tools/make_samples.py
+export GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$HOME/flono-release.keystore"   # absolute: Godot runs in godot/
+export GODOT_ANDROID_KEYSTORE_RELEASE_USER=<alias>      # keytool -list -keystore <keystore>
+read -s "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD?Password: " && export GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD
+./build.sh aab        # → build/flono.aab; the first run installs the Gradle template into godot/android/
+```
+
+Upload it in the [Play Console](https://play.google.com/console) under Test and release → Closed testing. Every
+upload needs a new version (see [Version](#version)). New personal developer accounts need a closed test with at
+least 12 testers for 14 days in a row before production access. "cannot connect to daemon at tcp:5037" only means
+no device is attached for adb.
+
 ### Release (GitHub Actions)
 
 Pushing a tag `v*` (e.g. `v0.1.0`) runs [`.github/workflows/release.yml`](.github/workflows/release.yml): it
