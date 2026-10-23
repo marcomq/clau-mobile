@@ -1,6 +1,6 @@
 /*
  * glo_port_prelude.h - force-included (-include) into every firmware translation unit.
- * Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
+ * Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
  */
 #pragma once
 

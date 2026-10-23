@@ -1,4 +1,4 @@
-/* NVS emulated as one file per key: <data_dir>/nvs/<namespace>/<key>, raw bytes. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* NVS emulated as one file per key: <data_dir>/nvs/<namespace>/<key>, raw bytes. Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>

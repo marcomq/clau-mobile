@@ -1,5 +1,5 @@
 /* Hands the firmware's AGC settings (config_glo.txt, changed by 6x U2 / 6x U3) to the mic AGC in glo_core_api.c.
- * Built with the firmware headers, unlike the shim. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+ * Built with the firmware headers, unlike the shim. Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include "hw/ui.h"
 
 void glo_port_get_agc(int *enabled, int *max_gain_db, int *target_db)

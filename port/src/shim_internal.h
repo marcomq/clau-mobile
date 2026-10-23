@@ -1,4 +1,4 @@
-/* Shared state between the fake ESP32 shim modules and the host API. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* Shared state between the fake ESP32 shim modules and the host API. Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #pragma once
 
 #include <stdatomic.h>

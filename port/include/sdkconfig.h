@@ -1,4 +1,4 @@
-/* fake sdkconfig.h for flono-mobile: only what the firmware tests for */
+/* fake sdkconfig.h for flono: only what the firmware tests for */
 #pragma once
 #define CONFIG_FREERTOS_HZ 1000
 #define CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ 240

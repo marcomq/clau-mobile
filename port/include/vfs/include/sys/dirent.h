@@ -1,3 +1,3 @@
-/* fake ESP-IDF header for flono-mobile */
+/* fake ESP-IDF header for flono */
 #pragma once
 #include <dirent.h>

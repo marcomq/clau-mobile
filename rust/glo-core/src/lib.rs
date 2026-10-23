@@ -1,4 +1,4 @@
-//! Host core for flono-mobile: the unmodified Glo Whale firmware running on a fake ESP32,
+//! Host core for flono: the unmodified Glo Whale firmware running on a fake ESP32,
 //! plus a low-latency cpal audio engine that drives it.
 
 #[cfg(target_os = "android")]

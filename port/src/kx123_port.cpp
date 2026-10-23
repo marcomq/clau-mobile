@@ -1,4 +1,4 @@
-/* Replaces hw/kx123.cpp: the KX123 accelerometer reports the host device's accelerometer (in g). Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* Replaces hw/kx123.cpp: the KX123 accelerometer reports the host device's accelerometer (in g). Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include "kx123.h"
 
 extern "C" void glo_port_get_accel(float out[3]);

@@ -1,6 +1,6 @@
 /*
  * gecho_stubs.c - definitions v1.0.118 only provides in the Gecho build but references from the Whale build.
- * Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
+ * Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0.
  */
 #include <stdint.h>
 #include "glo_config.h"

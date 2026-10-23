@@ -1,4 +1,4 @@
-/* Host API: boot supervisor, realtime render (resample + codec gain), meters. Part of flono-mobile, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
+/* Host API: boot supervisor, realtime render (resample + codec gain), meters. Part of flono, Copyright (C) 2026 Marco Mengelkoch, GPL-3.0. */
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>

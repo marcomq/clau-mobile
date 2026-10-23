@@ -1,7 +1,7 @@
 # Notices
 
-Flono (repository: flono-mobile), Copyright (C) 2026 Marco Mengelkoch, is free software under the GNU General Public
-License v3.0 (see `LICENSE`). It comes with ABSOLUTELY NO WARRANTY. Source: https://github.com/marcomq/flono-mobile (firmware submodule:
+Flono, Copyright (C) 2026 Marco Mengelkoch, is free software under the GNU General Public
+License v3.0 (see `LICENSE`). It comes with ABSOLUTELY NO WARRANTY. Source: https://github.com/marcomq/flono (firmware submodule:
 https://github.com/h3o/Glo_v1, commit aad6c17).
 
 Distributing a build (APK) means distributing the firmware and everything below: ship `LICENSE` and this
@@ -11,7 +11,7 @@ file with it and point recipients to the exact source revision.
 
 | Component | Where | License |
 |---|---|---|
-| Flono / flono-mobile port, bindings, app, sample generator, Copyright (C) 2026 Marco Mengelkoch | `port/`, `rust/`, `godot/`, `tools/` | GPL-3.0 |
+| Flono port, bindings, app, sample generator, Copyright (C) 2026 Marco Mengelkoch | `port/`, `rust/`, `godot/`, `tools/` | GPL-3.0 |
 | Glo / Gecho firmware v1.0, gechologic / phonicbloom (h3o) | `firmware/` | GPL-3.0 (upstream since v1.0.118; the v1.0 snapshot carries the ESP-IDF template's Apache-2.0 text) |
 | Mutable Instruments Clouds and stmlib, Copyright Olivier Gillet | `firmware/main/mi/` | MIT |
 | Dekrispator, Xavier Halgand; blepvco and minBLEP tables, Copyright Sean Bolton; resonant filter, Copyright Julian Schmidt | `firmware/main/dkr/` | GPL-2.0-or-later / per file header |

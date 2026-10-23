@@ -13,8 +13,8 @@ Flono does not collect, store or share any personal data.
 - **No network, no tracking:** Flono has no internet access, no accounts, no ads, no analytics and no third-party
   SDKs that collect data.
 
-The full source code is public: https://github.com/marcomq/flono-mobile
+The full source code is public: https://github.com/marcomq/flono
 
-Questions: open an issue at https://github.com/marcomq/flono-mobile/issues
+Questions: open an issue at https://github.com/marcomq/flono/issues
 
 Changes to this policy are published in this file.
